@@ -1,0 +1,16 @@
+from pyatspi.utils import *
+from pyatspi.interface import *
+from _typeshed import Incomplete
+
+__all__ = ['Value']
+
+class Value(interface):
+    def get_currentValue(self): ...
+    def set_currentValue(self, value) -> None: ...
+    currentValue: Incomplete
+    def get_maximumValue(self): ...
+    maximumValue: Incomplete
+    def get_minimumIncrement(self): ...
+    minimumIncrement: Incomplete
+    def get_minimumValue(self): ...
+    minimumValue: Incomplete

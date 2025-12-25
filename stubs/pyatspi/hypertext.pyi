@@ -1,0 +1,9 @@
+from pyatspi.utils import *
+from pyatspi.interface import *
+
+__all__ = ['Hypertext']
+
+class Hypertext(interface):
+    def getLink(self, index): ...
+    def getLinkIndex(self, character_index): ...
+    def getNLinks(self): ...

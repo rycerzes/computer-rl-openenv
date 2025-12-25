@@ -1,0 +1,16 @@
+from _typeshed import Incomplete
+
+class _ELessList(list):
+    def __getitem__(self, index): ...
+
+class EventType(str):
+    klass: Incomplete
+    major: Incomplete
+    minor: Incomplete
+    detail: Incomplete
+    def __init__(self, name) -> None: ...
+    def is_subtype(self, event_type, excludeSelf: bool = False): ...
+    @property
+    def name(self): ...
+    @property
+    def value(self): ...
