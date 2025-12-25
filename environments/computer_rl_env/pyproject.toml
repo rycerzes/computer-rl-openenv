@@ -1,0 +1,46 @@
+[project]
+name = "computer-rl-env"
+version = "0.1.0"
+description = "Computer control RL environment for OpenEnv"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.128.0",
+    "mss>=10.1.0",
+    "numpy>=2.4.1",
+    "openenv-core",
+    "pillow>=12.1.0",
+    "pyautogui>=0.9.54",
+    # "pyatspi", #TODO: fix https://gitlab.gnome.org/GNOME/pyatspi2/-/blob/master/INSTALL
+    "pydantic>=2.12.5",
+    "pynput>=1.8.1",
+    "requests>=2.32.5",
+    "uvicorn>=0.40.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[project.scripts]
+server = "computer_rl_env.server.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+packages = ["computer_rl_env"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["computer_rl_env"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/computer_rl_env",
+    "/server",
+]
+
+[tool.uv.sources]
+openenv-core = { git = "https://github.com/meta-pytorch/OpenEnv", rev = "083c16a7172e7d8899cfef45f85421f90d85f12f" }
