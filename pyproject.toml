@@ -7,6 +7,9 @@ name = "computer-use-agent"
 version = "0.1.0"
 requires-python = ">=3.13"
 description = "Computer use RL agent for desktop GUI automation"
+dependencies = [
+    "pyautogui>=0.9.54",
+]
 
 [tool.uv.workspace]
 members = [
@@ -20,6 +23,7 @@ openenv-core = { git = "https://github.com/meta-pytorch/OpenEnv.git", rev = "mai
 dev = [
     "pytest>=9.0.2",
     "ruff>=0.14.11",
+    "ty>=0.0.11",
 ]
 
 [tool.ruff]
@@ -29,6 +33,17 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 ignore = ["E501"]
+
+[tool.ty.environment]
+extra-paths = ["./stubs"]
+python-version = "3.13"
+
+[tool.ty.rules]
+possibly-unresolved-reference = "warn"
+
+[tool.ty.src]
+include = ["environments/**", "training/**"]
+exclude = ["stubs/**", ".venv/**", "**/.git/**", "**/__pycache__/**"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["environments/computer_rl_env"]
