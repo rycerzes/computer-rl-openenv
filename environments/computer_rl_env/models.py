@@ -27,6 +27,11 @@ class PressKey(BaseModel):
     key: str
 
 
+class HotKey(BaseModel):
+    action_type: Literal["hotkey"] = "hotkey"
+    keys: list[str] = Field(min_length=1)
+
+
 class Scroll(BaseModel):
     action_type: Literal["scroll"] = "scroll"
     x: int = Field(ge=0, le=1000)
@@ -53,7 +58,7 @@ class Done(BaseModel):
 
 
 ComputerAction = Annotated[
-    Union[MouseMove, Click, TypeText, PressKey, Scroll, Drag, Wait, Done],
+    Union[MouseMove, Click, TypeText, PressKey, HotKey, Scroll, Drag, Wait, Done],
     Field(discriminator="action_type"),
 ]
 
@@ -75,8 +80,8 @@ class ComputerObservation(BaseModel):
 
 
 class ComputerState(BaseModel):
-    step_count: int
-    episode_id: str
+    step_count: int = 0
+    episode_id: Optional[str] = None
     current_task: Optional[dict] = None
     display: str = ":99"
     max_steps: int = 100

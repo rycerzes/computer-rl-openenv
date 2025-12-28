@@ -6,6 +6,7 @@ from openenv.core import Environment
 
 from ..models import ComputerAction, ComputerObservation, ComputerState
 from .controllers.accessibility import AccessibilityParser
+from .controllers.keyboard import KeyboardController
 from .controllers.mouse import MouseController
 from .controllers.screenshot import ScreenCapture
 
@@ -20,6 +21,7 @@ class ComputerEnvironment(Environment):
         self.current_task = None
 
         self.mouse_controller = MouseController(display=display)
+        self.keyboard_controller = KeyboardController(display=display)
         self.screen_capture = ScreenCapture(display=display)
         self.accessibility_parser = AccessibilityParser()
 
@@ -36,30 +38,28 @@ class ComputerEnvironment(Environment):
         return ComputerObservation(
             screenshot_base64=screenshot,
             accessibility_tree=acc_tree,
-            instruction=self.current_task.get("instruction")
-            if self.current_task
-            else None,
+            instruction=self.current_task.get("instruction") if self.current_task else None,
             step_count=0,
             done=False,
         )
 
-    def step(self, action: ComputerAction) -> ComputerObservation:
+    def step(
+        self, action: ComputerAction, timeout_s: Optional[float] = None, **kwargs
+    ) -> ComputerObservation:
         self.step_count += 1
 
         if action.action_type == "move":
             self.mouse_controller.move(action.x, action.y)
         elif action.action_type == "click":
-            self.mouse_controller.click(
-                action.x, action.y, action.button, action.num_clicks
-            )
+            self.mouse_controller.click(action.x, action.y, action.button, action.num_clicks)
         elif action.action_type == "type":
-            self.mouse_controller.type_text(action.text)
+            self.keyboard_controller.type_text(action.text)
         elif action.action_type == "press":
-            self.mouse_controller.press_key(action.key)
+            self.keyboard_controller.press_key(action.key)
+        elif action.action_type == "hotkey":
+            self.keyboard_controller.press_hotkey(*action.keys)
         elif action.action_type == "scroll":
-            self.mouse_controller.scroll(
-                action.x, action.y, action.direction, action.amount
-            )
+            self.mouse_controller.scroll(action.x, action.y, action.direction, action.amount)
         elif action.action_type == "drag":
             self.mouse_controller.drag(action.x1, action.y1, action.x2, action.y2)
         elif action.action_type == "wait":
@@ -82,9 +82,7 @@ class ComputerEnvironment(Environment):
         return ComputerObservation(
             screenshot_base64=screenshot,
             accessibility_tree=acc_tree,
-            instruction=self.current_task.get("instruction")
-            if self.current_task
-            else None,
+            instruction=self.current_task.get("instruction") if self.current_task else None,
             step_count=self.step_count,
             reward=reward,
             done=done,
