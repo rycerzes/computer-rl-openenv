@@ -7,8 +7,21 @@ if TYPE_CHECKING:
 
 
 class RewardComputer:
+    DEFAULT_CONFIG = {
+        "mode": "sparse",
+        "success_reward": 1.0,
+        "failure_reward": 0.0,
+        "step_penalty": 0.01,
+        "reward_clamp": (-1.0, 1.0),
+    }
+
     def __init__(self, config: dict):
-        self.mode = config.get("mode", "sparse")
+        config = {**self.DEFAULT_CONFIG, **config}
+        self.mode = config["mode"]
+        self.success_reward = config["success_reward"]
+        self.failure_reward = config["failure_reward"]
+        self.step_penalty = config["step_penalty"]
+        self.reward_clamp = config["reward_clamp"]
 
     def compute(
         self,
@@ -24,10 +37,10 @@ class RewardComputer:
         return self.compute_sparse(success, step_count)
 
     def compute_sparse(self, success: bool, step_count: int) -> float:
-        reward = 1.0 if success else 0.0
-        step_penalty = 0.01 * step_count
-        reward -= step_penalty
-        return max(-1.0, min(1.0, reward))
+        reward = self.success_reward if success else self.failure_reward
+        reward -= self.step_penalty * step_count
+        min_reward, max_reward = self.reward_clamp
+        return max(min_reward, min(max_reward, reward))
 
     def compute_shaped(
         self,
@@ -36,15 +49,15 @@ class RewardComputer:
         prev_obs: ComputerObservation | None,
         curr_obs: ComputerObservation | None,
     ) -> float:
-        reward = 1.0 if success else 0.0
-        step_penalty = 0.01 * step_count
-        reward -= step_penalty
+        reward = self.success_reward if success else self.failure_reward
+        reward -= self.step_penalty * step_count
 
         if prev_obs and curr_obs:
             progress_reward = self.compute_progress_reward(prev_obs, curr_obs)
             reward += progress_reward
 
-        return max(-1.0, min(1.0, reward))
+        min_reward, max_reward = self.reward_clamp
+        return max(min_reward, min(max_reward, reward))
 
     def compute_progress_reward(
         self, prev_obs: ComputerObservation, curr_obs: ComputerObservation
