@@ -1,5 +1,3 @@
-from typing import Any
-
 from pydantic import BaseModel, Field
 
 
@@ -23,13 +21,22 @@ class TaskManager:
             step_type = step.get("type")
 
             if step_type == "launch":
-                self._launch_app(step.get("app"))
+                app = step.get("app")
+                if app:
+                    self._launch_app(str(app))
             elif step_type == "download":
-                self._download_file(step.get("url"), step.get("path"))
+                url = step.get("url")
+                path = step.get("path")
+                if url and path:
+                    self._download_file(str(url), str(path))
             elif step_type == "create_file":
-                self._create_file(step.get("path"), step.get("content", ""))
+                path = step.get("path")
+                if path:
+                    self._create_file(str(path), str(step.get("content", "")))
             elif step_type == "open_url":
-                self._open_url(step.get("url"))
+                url = step.get("url")
+                if url:
+                    self._open_url(str(url))
 
         self.active_task = task_config
         return True
@@ -41,7 +48,10 @@ class TaskManager:
         metric_type = evaluator_config.get("type")
         params = evaluator_config.get("params", {})
 
-        success = evaluate_metric(metric_type, **params)
+        if metric_type:
+            success = evaluate_metric(str(metric_type), **params)
+        else:
+            success = False
         reward = 1.0 if success else 0.0
 
         if not success:

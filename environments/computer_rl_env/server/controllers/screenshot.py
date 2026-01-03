@@ -2,6 +2,7 @@ import base64
 import io
 
 import mss
+from mss import tools
 
 try:
     from PIL import Image
@@ -26,12 +27,10 @@ class ScreenCapture:
         screenshot = self.sct.grab(screen)
 
         if HAS_PIL:
-            img = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
+            img = Image.frombytes("RGB", screenshot.size, screenshot.rgb) # pyright: ignore[reportPossiblyUnboundVariable]
             buffer = io.BytesIO()
             img.save(buffer, format="JPEG", quality=quality)
             return base64.b64encode(buffer.getvalue()).decode("utf-8")
         else:
-            import mss as m
-
-            img = m.to_png(screenshot.rgb, screenshot.size)
+            img = tools.to_png(screenshot.rgb, screenshot.size) or b""
             return base64.b64encode(img).decode("utf-8")

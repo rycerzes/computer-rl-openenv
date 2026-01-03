@@ -2,6 +2,13 @@ from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
+try:
+    from openenv.core.env_server.types import Action, Observation
+except ImportError:
+    # Fallback to BaseModel if OpenEnv is not installed
+    Action = BaseModel  # type: ignore
+    Observation = BaseModel  # type: ignore
+
 
 class MouseMove(BaseModel):
     action_type: Literal["move"] = "move"
@@ -63,7 +70,13 @@ ComputerAction = Annotated[
 ]
 
 
-class ComputerObservation(BaseModel):
+class ComputerActionWrapper(Action):
+    """Wrapper class for ComputerAction to satisfy OpenEnv type requirements."""
+
+    action: ComputerAction
+
+
+class ComputerObservation(Observation):
     screenshot_base64: str
     screenshot_resolution: tuple[int, int] = (1280, 960)
     accessibility_tree: Optional[str] = None

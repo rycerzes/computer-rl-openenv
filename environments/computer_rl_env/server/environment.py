@@ -4,7 +4,19 @@ from typing import Optional
 
 from openenv.core import Environment
 
-from ..models import ComputerAction, ComputerObservation, ComputerState
+from ..models import (
+    Click,
+    ComputerAction,
+    ComputerObservation,
+    ComputerState,
+    Drag,
+    HotKey,
+    MouseMove,
+    PressKey,
+    Scroll,
+    TypeText,
+    Wait,
+)
 from .controllers.accessibility import AccessibilityParser
 from .controllers.keyboard import KeyboardController
 from .controllers.mouse import MouseController
@@ -72,21 +84,21 @@ class ComputerEnvironment(Environment):
     ) -> ComputerObservation:
         self.step_count += 1
 
-        if action.action_type == "move":
+        if isinstance(action, MouseMove):
             self.mouse_controller.move(action.x, action.y)
-        elif action.action_type == "click":
+        elif isinstance(action, Click):
             self.mouse_controller.click(action.x, action.y, action.button, action.num_clicks)
-        elif action.action_type == "type":
+        elif isinstance(action, TypeText):
             self.keyboard_controller.type_text(action.text)
-        elif action.action_type == "press":
+        elif isinstance(action, PressKey):
             self.keyboard_controller.press_key(action.key)
-        elif action.action_type == "hotkey":
+        elif isinstance(action, HotKey):
             self.keyboard_controller.press_hotkey(*action.keys)
-        elif action.action_type == "scroll":
+        elif isinstance(action, Scroll):
             self.mouse_controller.scroll(action.x, action.y, action.direction, action.amount)
-        elif action.action_type == "drag":
+        elif isinstance(action, Drag):
             self.mouse_controller.drag(action.x1, action.y1, action.x2, action.y2)
-        elif action.action_type == "wait":
+        elif isinstance(action, Wait):
             time.sleep(action.seconds)
         elif action.action_type == "done":
             pass

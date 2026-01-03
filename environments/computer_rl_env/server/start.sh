@@ -23,6 +23,7 @@ function cleanup() {
 
 trap cleanup SIGTERM SIGINT EXIT
 
-exec uvicorn computer_rl_env.server.app:create_app \
+exec /app/.venv/bin/uvicorn computer_rl_env.server.app:create_app \
     --host 0.0.0.0 \
-    --port 8000
+    --port 8000 \
+    --factory

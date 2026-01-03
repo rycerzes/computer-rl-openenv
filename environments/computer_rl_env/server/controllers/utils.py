@@ -6,6 +6,6 @@ def is_pyatspi_available() -> bool:
 
 
 def import_pyatspi():
-    import pyatspi  # type: ignore
+    import pyatspi
 
     return pyatspi

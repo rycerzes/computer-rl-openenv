@@ -8,7 +8,7 @@ class KeyboardController:
         self.display = display
         if "DISPLAY" not in os.environ:
             os.environ["DISPLAY"] = display
-        pyautogui.FAILSAFE = False
+        pyautogui.FAILSAFE = False  # type: ignore
 
     def type_text(self, text: str, delay: float = 0.01) -> None:
         pyautogui.write(text, interval=delay)

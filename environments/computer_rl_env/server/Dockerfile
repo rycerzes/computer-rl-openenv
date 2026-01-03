@@ -6,9 +6,11 @@ RUN apt-get update && apt-get install -y \
     xvfb \
     xfce4 \
     xfce4-terminal \
-    firefox \
+    firefox-esr \
     libreoffice-writer \
     libreoffice-calc \
+    wmctrl \
+    xdotool \
     && rm -rf /var/lib/apt/lists/*
 
 ENV DISPLAY=:99
@@ -31,7 +33,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
 
-COPY start.sh /usr/local/bin/
+COPY environments/computer_rl_env/server/start.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/start.sh
 
 CMD ["start.sh"]
