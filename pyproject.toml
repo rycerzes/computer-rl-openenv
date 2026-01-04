@@ -9,6 +9,7 @@ requires-python = ">=3.13"
 description = "Computer use RL agent for desktop GUI automation"
 dependencies = [
     "pyautogui>=0.9.54",
+    "computer-rl-env",
 ]
 
 [tool.uv.workspace]
@@ -18,6 +19,7 @@ members = [
 
 [tool.uv.sources]
 openenv-core = { git = "https://github.com/meta-pytorch/OpenEnv.git", rev = "main" }
+computer-rl-env = { workspace = true }
 
 [dependency-groups]
 dev = [
