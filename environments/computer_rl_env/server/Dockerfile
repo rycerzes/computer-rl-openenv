@@ -4,6 +4,11 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
     xvfb \
+    git \
+    build-essential \
+    linux-libc-dev \
+    python3-tk \
+    dos2unix \
     xfce4 \
     xfce4-terminal \
     firefox-esr \
@@ -34,6 +39,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8000
 
 COPY environments/computer_rl_env/server/start.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/start.sh
+RUN dos2unix /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
 
 CMD ["start.sh"]
