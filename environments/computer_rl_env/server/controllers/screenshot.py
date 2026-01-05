@@ -12,19 +12,24 @@ except ImportError:
     HAS_PIL = False
 
 
+import threading
+
 class ScreenCapture:
     def __init__(self, display: str = ":99"):
         self.display = display
-        self.sct = mss.mss()
+        self._local = threading.local()
 
     def capture(self, quality: int = 85) -> str:
-        monitors = self.sct.monitors
+        if not hasattr(self._local, "sct"):
+            self._local.sct = mss.mss()
+            
+        monitors = self._local.sct.monitors
         if len(monitors) > 1:
             screen = monitors[1]
         else:
             screen = {"top": 0, "left": 0, "width": 1280, "height": 960}
 
-        screenshot = self.sct.grab(screen)
+        screenshot = self._local.sct.grab(screen)
 
         if HAS_PIL:
             img = Image.frombytes("RGB", screenshot.size, screenshot.rgb) # pyright: ignore[reportPossiblyUnboundVariable]
