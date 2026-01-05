@@ -58,11 +58,14 @@ class ComputerEnvironment(Environment):
 
         screenshot = self.screen_capture.capture()
         acc_tree = self.accessibility_parser.parse()
+        active_info = self.accessibility_parser.get_active_window() or {}
 
         obs = ComputerObservation(
             screenshot_base64=screenshot,
             accessibility_tree=acc_tree,
             instruction=self.current_task.get("instruction") if self.current_task else None,
+            active_window=active_info.get("active_window"),
+            active_app=active_info.get("active_app"),
             step_count=0,
             done=False,
         )
@@ -107,6 +110,7 @@ class ComputerEnvironment(Environment):
 
         screenshot = self.screen_capture.capture()
         acc_tree = self.accessibility_parser.parse()
+        active_info = self.accessibility_parser.get_active_window() or {}
 
         done = False
         if self.current_task:
@@ -117,6 +121,8 @@ class ComputerEnvironment(Environment):
             screenshot_base64=screenshot,
             accessibility_tree=acc_tree,
             instruction=self.current_task.get("instruction") if self.current_task else None,
+            active_window=active_info.get("active_window"),
+            active_app=active_info.get("active_app"),
             step_count=self.step_count,
             done=done,
         )

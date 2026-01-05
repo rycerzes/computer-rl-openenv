@@ -39,7 +39,11 @@ class AccessibilityParser:
         return "empty"
 
     def _check_x11_tools(self) -> bool:
-        return shutil.which("xdotool") is not None and shutil.which("wmctrl") is not None
+        return (
+            shutil.which("xdotool") is not None
+            and shutil.which("wmctrl") is not None
+            and shutil.which("xprop") is not None
+        )
 
     def _parse_window_tree(self) -> dict:
         if self.backend == "pyatspi":
@@ -162,3 +166,47 @@ class AccessibilityParser:
             lines.extend(self._format_node(child, depth + 1))
 
         return lines
+
+    def get_active_window(self) -> dict | None:
+        """Get active window class and title using xdotool/xprop."""
+        if not self._check_x11_tools():
+            return None
+
+        try:
+            # Get active window ID
+            result = subprocess.run(
+                ["xdotool", "getactivewindow"], capture_output=True, text=True, timeout=1
+            )
+            if result.returncode != 0:
+                return None
+            window_id = result.stdout.strip()
+
+            # Get title
+            result_name = subprocess.run(
+                ["xdotool", "getwindowname", window_id],
+                capture_output=True,
+                text=True,
+                timeout=1,
+            )
+            title = result_name.stdout.strip() if result_name.returncode == 0 else ""
+
+            # Get class (app name) using xprop
+            # xprop -id 12345 WM_CLASS returns 'WM_CLASS(STRING) = "leafpad", "Leafpad"'
+            result_class = subprocess.run(
+                ["xprop", "-id", window_id, "WM_CLASS"],
+                capture_output=True,
+                text=True,
+                timeout=1,
+            )
+            app_name = ""
+            if result_class.returncode == 0:
+                # Parse: WM_CLASS(STRING) = "app_id", "App Name"
+                parts = result_class.stdout.split('"')
+                if len(parts) >= 4:
+                    app_name = parts[3]  # The printable class name
+                elif len(parts) >= 2:
+                    app_name = parts[1]
+
+            return {"active_window": title, "active_app": app_name}
+        except Exception:
+            return None
