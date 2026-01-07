@@ -1,6 +1,6 @@
 from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 try:
     from openenv.core.env_server.types import Action, Observation
@@ -74,6 +74,11 @@ class ComputerActionWrapper(Action):
     """Wrapper class for ComputerAction to satisfy OpenEnv type requirements."""
 
     action: ComputerAction
+
+
+class ComputerActionRequest(RootModel):
+    """Wrapper for ComputerAction to provide model_validate method."""
+    root: ComputerAction
 
 
 class ComputerObservation(Observation):

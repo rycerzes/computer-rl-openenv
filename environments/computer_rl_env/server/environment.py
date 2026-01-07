@@ -7,6 +7,7 @@ from openenv.core import Environment
 from ..models import (
     Click,
     ComputerAction,
+    ComputerActionRequest,
     ComputerObservation,
     ComputerState,
     Drag,
@@ -21,6 +22,7 @@ from .controllers.accessibility import AccessibilityParser
 from .controllers.keyboard import KeyboardController
 from .controllers.mouse import MouseController
 from .controllers.screenshot import ScreenCapture
+from .evaluators.base import TaskConfig, TaskManager
 from .rewards import RewardComputer
 
 
@@ -56,6 +58,11 @@ class ComputerEnvironment(Environment):
         self.current_task = kwargs.get("task_config")
         self.prev_observation = None
 
+        if self.current_task:
+            task_manager = TaskManager()
+            task_config = TaskConfig(**self.current_task)
+            task_manager.setup(task_config)
+
         screenshot = self.screen_capture.capture()
         acc_tree = self.accessibility_parser.parse()
         active_info = self.accessibility_parser.get_active_window() or {}
@@ -75,7 +82,6 @@ class ComputerEnvironment(Environment):
     def _evaluate_task_success(self) -> bool:
         if not self.current_task:
             return False
-        from .evaluators.base import TaskConfig, TaskManager
 
         task_manager = TaskManager()
         task_config = TaskConfig(**self.current_task)
@@ -83,27 +89,29 @@ class ComputerEnvironment(Environment):
         return success
 
     def step(
-        self, action: ComputerAction, timeout_s: Optional[float] = None, **kwargs
+        self, action: ComputerActionRequest, timeout_s: Optional[float] = None, **kwargs
     ) -> ComputerObservation:
         self.step_count += 1
 
-        if isinstance(action, MouseMove):
-            self.mouse_controller.move(action.x, action.y)
-        elif isinstance(action, Click):
-            self.mouse_controller.click(action.x, action.y, action.button, action.num_clicks)
-        elif isinstance(action, TypeText):
-            self.keyboard_controller.type_text(action.text)
-        elif isinstance(action, PressKey):
-            self.keyboard_controller.press_key(action.key)
-        elif isinstance(action, HotKey):
-            self.keyboard_controller.press_hotkey(*action.keys)
-        elif isinstance(action, Scroll):
-            self.mouse_controller.scroll(action.x, action.y, action.direction, action.amount)
-        elif isinstance(action, Drag):
-            self.mouse_controller.drag(action.x1, action.y1, action.x2, action.y2)
-        elif isinstance(action, Wait):
-            time.sleep(action.seconds)
-        elif action.action_type == "done":
+        computer_action = action.root
+
+        if isinstance(computer_action, MouseMove):
+            self.mouse_controller.move(computer_action.x, computer_action.y)
+        elif isinstance(computer_action, Click):
+            self.mouse_controller.click(computer_action.x, computer_action.y, computer_action.button, computer_action.num_clicks)
+        elif isinstance(computer_action, TypeText):
+            self.keyboard_controller.type_text(computer_action.text)
+        elif isinstance(computer_action, PressKey):
+            self.keyboard_controller.press_key(computer_action.key)
+        elif isinstance(computer_action, HotKey):
+            self.keyboard_controller.press_hotkey(*computer_action.keys)
+        elif isinstance(computer_action, Scroll):
+            self.mouse_controller.scroll(computer_action.x, computer_action.y, computer_action.direction, computer_action.amount)
+        elif isinstance(computer_action, Drag):
+            self.mouse_controller.drag(computer_action.x1, computer_action.y1, computer_action.x2, computer_action.y2)
+        elif isinstance(computer_action, Wait):
+            time.sleep(computer_action.seconds)
+        elif computer_action.action_type == "done":
             pass
 
         time.sleep(0.5)
@@ -130,7 +138,7 @@ class ComputerEnvironment(Environment):
         prev_obs = self.prev_observation
         self.prev_observation = curr_obs
 
-        if done or action.action_type == "done":
+        if done or computer_action.action_type == "done":
             success = self._evaluate_task_success()
             reward = self.reward_computer.compute(success, self.step_count, prev_obs, curr_obs)
             curr_obs.reward = reward
