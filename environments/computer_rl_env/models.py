@@ -1,13 +1,7 @@
 from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, RootModel
-
-try:
-    from openenv.core.env_server.types import Action, Observation
-except ImportError:
-    # Fallback to BaseModel if OpenEnv is not installed
-    Action = BaseModel  # type: ignore
-    Observation = BaseModel  # type: ignore
+from openenv.core import Action, Observation, State
+from pydantic import BaseModel, Field
 
 
 class MouseMove(BaseModel):
@@ -64,21 +58,18 @@ class Done(BaseModel):
     action_type: Literal["done"] = "done"
 
 
-ComputerAction = Annotated[
+ComputerActionVariant = Annotated[
     Union[MouseMove, Click, TypeText, PressKey, HotKey, Scroll, Drag, Wait, Done],
     Field(discriminator="action_type"),
 ]
 
 
-class ComputerActionWrapper(Action):
-    """Wrapper class for ComputerAction to satisfy OpenEnv type requirements."""
-
-    action: ComputerAction
-
-
-class ComputerActionRequest(RootModel):
-    """Wrapper for ComputerAction to provide model_validate method."""
-    root: ComputerAction
+class ComputerAction(Action):
+    """
+    Action for the Computer Environment.
+    Wraps the specific action variant to comply with OpenEnv Action schema.
+    """
+    action: ComputerActionVariant
 
 
 class ComputerObservation(Observation):
@@ -90,18 +81,14 @@ class ComputerObservation(Observation):
     terminal_exit_code: Optional[int] = None
     active_window: Optional[str] = None
     active_app: Optional[str] = None
-    reward: float | int | None = None
-    done: bool = False
     step_count: int = 0
     instruction: Optional[str] = None
     task_metadata: dict = Field(default_factory=dict)
 
 
-class ComputerState(BaseModel):
-    step_count: int = 0
-    episode_id: Optional[str] = None
+class ComputerState(State):
     current_task: Optional[dict] = None
     display: str = ":99"
     max_steps: int = 100
     timeout: int = 60
-    reward: float = 0.0
+    # step_count and episode_id are inherited from State

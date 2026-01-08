@@ -1,6 +1,6 @@
 from openenv.core import create_app as openenv_create_app
 
-from ..models import ComputerAction, ComputerActionRequest, ComputerObservation, ComputerState
+from ..models import ComputerAction, ComputerObservation, ComputerState
 from .environment import ComputerEnvironment
 
 
@@ -14,7 +14,7 @@ def main():
 def create_app():
     return openenv_create_app(
         env=ComputerEnvironment,
-        action_cls=ComputerActionRequest,  # type: ignore[arg-type]
+        action_cls=ComputerAction,
         observation_cls=ComputerObservation,
     )
 

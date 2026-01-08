@@ -7,7 +7,6 @@ from openenv.core import Environment
 from ..models import (
     Click,
     ComputerAction,
-    ComputerActionRequest,
     ComputerObservation,
     ComputerState,
     Drag,
@@ -26,10 +25,11 @@ from .evaluators.base import TaskConfig, TaskManager
 from .rewards import RewardComputer
 
 
-class ComputerEnvironment(Environment):
+class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, ComputerState]):
     SUPPORTS_CONCURRENT_SESSIONS = False
 
     def __init__(self, display: str = ":99", reward_config: dict | None = None):
+        super().__init__()
         self.display = display
         self.step_count = 0
         self.episode_id = None
@@ -89,11 +89,12 @@ class ComputerEnvironment(Environment):
         return success
 
     def step(
-        self, action: ComputerActionRequest, timeout_s: Optional[float] = None, **kwargs
+        self, action: ComputerAction, timeout_s: Optional[float] = None, **kwargs
     ) -> ComputerObservation:
         self.step_count += 1
 
-        computer_action = action.root
+        # Unwrap the action variant from the wrapper
+        computer_action = action.action
 
         if isinstance(computer_action, MouseMove):
             self.mouse_controller.move(computer_action.x, computer_action.y)

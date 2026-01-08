@@ -9,14 +9,19 @@ class ComputerEnvClient(EnvClient[ComputerAction, ComputerObservation, ComputerS
         return action.model_dump()
 
     def _parse_result(self, payload: dict) -> StepResult[ComputerObservation]:
-        observation = ComputerObservation(**payload["observation"])
-        reward = payload.get("reward", 0.0)
-        done = payload.get("done", False)
+        # Payload comes from EnvClient.step -> parse_result
+        # The payload will structure matches what serialize_observation produces
+        # "observation": {...}, "reward": ..., "done": ...
+        
+        # We need to construct the Observation object from the dict
+        observation_data = payload["observation"]
+        observation = ComputerObservation.model_validate(observation_data)
+        
         return StepResult(
             observation=observation,
-            reward=reward,
-            done=done,
+            reward=payload.get("reward"),
+            done=payload.get("done", False),
         )
 
     def _parse_state(self, payload: dict) -> ComputerState:
-        return ComputerState(**payload)
+        return ComputerState.model_validate(payload)
