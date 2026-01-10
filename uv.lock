@@ -123,6 +123,7 @@ dependencies = [
     { name = "pyautogui" },
     { name = "pydantic" },
     { name = "pynput" },
+    { name = "pyyaml" },
     { name = "requests" },
     { name = "uvicorn" },
 ]
@@ -144,6 +145,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pynput", specifier = ">=1.8.1" },
     { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]
