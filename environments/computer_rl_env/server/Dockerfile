@@ -16,7 +16,12 @@ RUN apt-get update && apt-get install -y \
     libreoffice-calc \
     wmctrl \
     xdotool \
+    supervisor \
+    dbus-x11 \
     && rm -rf /var/lib/apt/lists/*
+
+# Clean up power management packages to prevent blanking
+RUN apt-get remove -y xfce4-power-manager xfce4-screensaver light-locker xscreensaver-data || true
 
 ENV DISPLAY=:99
 ENV PYTHONUNBUFFERED=1
