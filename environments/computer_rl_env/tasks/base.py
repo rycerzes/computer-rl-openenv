@@ -1,32 +1,40 @@
-from typing import Literal, Optional, Any, Dict, List
+from typing import Literal, Optional, Any, Dict, List, Union
 from pydantic import BaseModel, Field
 
-class SetupStep(BaseModel):
+class ConfigStep(BaseModel):
     """
-    Represents a single step in the task setup process.
+    Represents a single step in the task configuration/setup process.
     """
-    type: Literal["launch", "download", "create_file", "open_url"]
-    params: Dict[str, Any]
+    type: str # e.g., "launch", "sleep", "execute"
+    parameters: Dict[str, Any] = Field(default_factory=dict)
 
 class EvaluatorConfig(BaseModel):
     """
-    Configuration for the task evaluator.
+    Configuration for the task evaluator, matching OSWorld schema.
     """
-    type: Literal["url_match", "file_exists", "app_launched", "text_present", "process_running"]
-    params: Dict[str, Any]
-    success_threshold: float = 1.0
+    func: str # e.g., "match_in_list", "check_file"
+    result: Dict[str, Any] = Field(default_factory=dict)
+    expected: Dict[str, Any] = Field(default_factory=dict)
+    postconfig: List[ConfigStep] = Field(default_factory=list)
 
 class Task(BaseModel):
     """
-    Definition of a Computer RL Task.
+    Definition of a Computer RL Task, matching OSWorld JSON schema.
     """
     id: str
+    snapshot: str # e.g., "chrome", "ubuntu"
     instruction: str
-    category: Literal["browser", "office", "file", "system"]
-    difficulty: Literal["easy", "medium", "hard"]
-    setup: List[SetupStep] = Field(default_factory=list)
+    source: Optional[str] = None
+    config: List[ConfigStep] = Field(default_factory=list)
+    trajectory: Optional[str] = None
+    related_apps: List[str] = Field(default_factory=list)
     evaluator: EvaluatorConfig
+    proxy: bool = False
+    fixed_ip: bool = False
+    
+    # Optional metadata fields that might not be in every OSWorld JSON but are useful
+    category: Optional[str] = None
+    difficulty: Optional[str] = None
     max_steps: int = 50
     timeout: int = 60
-    reference_solution: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)

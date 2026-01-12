@@ -20,13 +20,16 @@ class TaskLoader:
             raise FileNotFoundError(f"Task file not found: {filepath}")
 
         with open(path, "r", encoding="utf-8") as f:
-            if path.suffix in [".yaml", ".yml"]:
-                data = yaml.safe_load(f)
-            elif path.suffix == ".json":
+            if path.suffix == ".json":
                 data = json.load(f)
+            elif path.suffix in [".yaml", ".yml"]:
+                # Keep legacy YAML support for now, but OSWorld uses JSON
+                data = yaml.safe_load(f)
             else:
                 raise ValueError(f"Unsupported file extension: {path.suffix}")
 
+        # Handle simplified task definitions or migrate old ones if needed
+        # For now, we assume strict adherence to the new Task model
         return Task(**data)
 
     def load_directory(self, dirpath: str) -> List[Task]:
