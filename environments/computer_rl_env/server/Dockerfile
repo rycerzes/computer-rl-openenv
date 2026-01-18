@@ -2,7 +2,9 @@ FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y \
     xvfb \
     git \
     build-essential \
@@ -17,11 +19,12 @@ RUN apt-get update && apt-get install -y \
     wmctrl \
     xdotool \
     supervisor \
-    dbus-x11 \
-    && rm -rf /var/lib/apt/lists/*
+    dbus-x11
 
 # Clean up power management packages to prevent blanking
-RUN apt-get remove -y xfce4-power-manager xfce4-screensaver light-locker xscreensaver-data || true
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get remove -y xfce4-power-manager xfce4-screensaver light-locker xscreensaver-data || true
 
 ENV DISPLAY=:99
 ENV PYTHONUNBUFFERED=1
