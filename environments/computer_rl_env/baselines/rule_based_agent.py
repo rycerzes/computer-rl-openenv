@@ -48,8 +48,30 @@ class RuleBasedAgent:
                 actions.append({"action_type": "key", "key": "enter"})
                 response_text = f"Searching for '{search_term}'"
                 return response_text, actions
+            
+            # Fallback: Open App Finder if search bar not found
+            if not getattr(self, "_app_finder_opened", False):
+                actions.append({"action_type": "key", "key": "alt+f3"})
+                actions.append({"action_type": "wait", "duration": 1.0})
+                self._app_finder_opened = True
+                response_text = "Opening App Finder (Alt+F3)"
+                return response_text, actions
+            else:
+                # App finder assumed open, type query
+                search_term = "calculator" # default
+                words = instruction.split()
+                if "for" in words:
+                    idx = words.index("for")
+                    if idx + 1 < len(words):
+                        search_term = " ".join(words[idx+1:])
+                
+                actions.append({"action_type": "type", "text": search_term})
+                actions.append({"action_type": "key", "key": "enter"})
+                self._app_finder_opened = False # Reset
+                response_text = f"Typing '{search_term}' in App Finder"
+                return response_text, actions
 
-        # Rule 2: Open/Launch - click on icons
+        # Rule 2: Open/Launch - click on icons or use shortcut
         if "open" in instruction.lower() or "launch" in instruction.lower():
             # Try to find app name in instruction
             words = instruction.lower().split()
@@ -65,6 +87,20 @@ class RuleBasedAgent:
                      actions.append({"action_type": "double_click", "coordinate": coords})
                      response_text = f"Opening {app_name}"
                      return response_text, actions
+            
+            # Fallback: Open App Finder
+            if not getattr(self, "_app_finder_opened", False):
+                actions.append({"action_type": "key", "key": "alt+f3"})
+                actions.append({"action_type": "wait", "duration": 1.0})
+                self._app_finder_opened = True
+                response_text = "Opening App Finder (Alt+F3)"
+                return response_text, actions
+            else:
+                 actions.append({"action_type": "type", "text": app_name or "terminal"})
+                 actions.append({"action_type": "key", "key": "enter"})
+                 self._app_finder_opened = False
+                 response_text = f"Typing '{app_name}' in App Finder"
+                 return response_text, actions
 
         # Rule 3: Click generic buttons if mentioned
         target_name = None
@@ -114,4 +150,4 @@ class RuleBasedAgent:
         return None
 
     def reset(self, logger=None):
-        pass
+        self._app_finder_opened = False
