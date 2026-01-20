@@ -1,0 +1,108 @@
+"""Training configuration for GRPO with TRL."""
+
+from pathlib import Path
+from typing import Literal
+
+import yaml
+from pydantic import BaseModel, Field
+
+
+class TrainingConfig(BaseModel):
+    """Configuration for GRPO training with TRL and OpenEnv."""
+
+    # Model
+    model_name_or_path: str = Field(
+        description="HuggingFace model ID or local path (e.g., 'Qwen/Qwen2-VL-2B-Instruct')"
+    )
+    use_vision: bool = Field(
+        default=False,
+        description="Whether to use vision/multimodal model with screenshots",
+    )
+
+    # Training hyperparameters
+    num_train_epochs: int = Field(default=3, ge=1)
+    learning_rate: float = Field(default=5e-6, gt=0)
+    batch_size: int = Field(default=1, ge=1, description="Per-device train batch size")
+    gradient_accumulation_steps: int = Field(default=8, ge=1)
+    warmup_ratio: float = Field(default=0.1, ge=0, le=1)
+    max_grad_norm: float = Field(default=1.0, gt=0)
+
+    # vLLM configuration (CUDA 12+ required)
+    use_vllm: bool = Field(default=True, description="Use vLLM for fast inference")
+    vllm_mode: Literal["colocate", "server"] = Field(
+        default="colocate",
+        description="colocate: same process (1 GPU), server: separate process (2+ GPUs)",
+    )
+    vllm_server_url: str | None = Field(
+        default=None,
+        description="vLLM server URL for server mode (e.g., 'http://localhost:8000')",
+    )
+
+    # Environment
+    openenv_server_url: str = Field(
+        default="http://localhost:8000",
+        description="URL of the Computer RL environment server",
+    )
+    task_catalog_path: str | None = Field(
+        default=None,
+        description="Path to task catalog YAML/JSON for training tasks",
+    )
+
+    # Generation
+    max_completion_length: int = Field(
+        default=100,
+        ge=1,
+        description="Maximum tokens for model completion",
+    )
+    num_generations: int = Field(
+        default=4,
+        ge=1,
+        description="Number of completions to generate per prompt for GRPO",
+    )
+    temperature: float = Field(default=1.0, gt=0)
+
+    # Reward weights
+    reward_weights: dict[str, float] = Field(
+        default_factory=lambda: {
+            "task_success": 1.0,
+            "efficiency": 0.3,
+            "diversity": 0.1,
+        },
+        description="Weights for combining multiple reward signals",
+    )
+
+    # Output
+    output_dir: str = Field(default="./checkpoints")
+    save_steps: int = Field(default=100, ge=1)
+    push_to_hub: bool = Field(default=False)
+    hf_repo_id: str | None = Field(default=None, description="HuggingFace repo for model upload")
+
+    # Logging (trackio)
+    project_name: str = Field(
+        default="computer-rl",
+        description="Project name for trackio logging",
+    )
+    trackio_space_id: str | None = Field(
+        default=None,
+        description="Optional HuggingFace Space ID for remote trackio dashboard",
+    )
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> "TrainingConfig":
+        """Load configuration from a YAML file."""
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Config file not found: {path}")
+
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        return cls(**data)
+
+    def to_yaml(self, path: str | Path) -> None:
+        """Save configuration to a YAML file."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(path, "w", encoding="utf-8") as f:
+            yaml.dump(self.model_dump(), f, default_flow_style=False, sort_keys=False)

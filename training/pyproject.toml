@@ -1,0 +1,46 @@
+[project]
+name = "computer-rl-training"
+version = "0.1.0"
+description = "GRPO training infrastructure for Computer RL Environment"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    # Core training
+    "trl>=0.27.0",
+    "transformers>=4.48.0",
+    "datasets>=3.3.0",
+    "pydantic>=2.12.0",
+    "pyyaml>=6.0.3",
+
+    # Inference (CUDA 12+)
+    "vllm>=0.8.0",
+
+    # Logging
+    "trackio>=0.3.1",
+
+    # Workspace dependency
+    "computer-rl-env",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=9.0.0", "pytest-asyncio>=1.3.0"]
+gpu = ["torch>=2.9.0"]
+
+[project.scripts]
+train = "training.trainer:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["training"]
+
+[tool.uv.sources]
+computer-rl-env = { workspace = true }
+torch = [{ index = "pytorch-cu128", extra = "gpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
