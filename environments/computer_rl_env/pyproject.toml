@@ -8,7 +8,7 @@ dependencies = [
     "docker>=7.1.0",
     "fastapi>=0.128.0",
     "mss>=10.1.0",
-    "numpy>=2.4.1",
+    "numpy>=1.24,<2.3",  # constrained by vllm's numba dependency
     "openenv-core",
     "pillow>=12.1.0",
     "pyautogui>=0.9.54",
@@ -21,9 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest",
-]
+dev = ["pytest"]
 
 [project.scripts]
 server = "computer_rl_env.server.app:main"
@@ -39,10 +37,7 @@ packages = ["computer_rl_env"]
 packages = ["computer_rl_env"]
 
 [tool.hatch.build.targets.sdist]
-include = [
-    "/computer_rl_env",
-    "/server",
-]
+include = ["/computer_rl_env", "/server"]
 
 [tool.uv.sources]
 openenv-core = { git = "https://github.com/meta-pytorch/OpenEnv", rev = "083c16a7172e7d8899cfef45f85421f90d85f12f" }
