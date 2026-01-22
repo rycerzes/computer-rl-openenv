@@ -35,7 +35,20 @@ class TrainingConfig(BaseModel):
     )
     vllm_server_url: str | None = Field(
         default=None,
-        description="vLLM server URL for server mode (e.g., 'http://localhost:8000')",
+        description="vLLM server URL for server mode (e.g., 'http://localhost:8080')",
+    )
+    vllm_tensor_parallel_size: int = Field(
+        default=1,
+        ge=1,
+        description="Number of GPUs for tensor parallelism in colocate mode (e.g., 2 for dual-GPU)",
+    )
+    vllm_device: str = Field(
+        default="cuda:0",
+        description="GPU device for vLLM server in server mode (e.g., 'cuda:0')",
+    )
+    training_device: str = Field(
+        default="cuda:0",
+        description="GPU device for training in server mode (e.g., 'cuda:1')",
     )
 
     # Environment
@@ -46,6 +59,16 @@ class TrainingConfig(BaseModel):
     task_catalog_path: str | None = Field(
         default=None,
         description="Path to task catalog YAML/JSON for training tasks",
+    )
+    max_episode_steps: int = Field(
+        default=50,
+        ge=1,
+        description="Maximum steps per episode in rollout",
+    )
+    num_parallel_envs: int = Field(
+        default=1,
+        ge=1,
+        description="Number of parallel environment instances for rollout",
     )
 
     # Generation
