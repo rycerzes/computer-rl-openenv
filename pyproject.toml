@@ -7,14 +7,7 @@ name = "computer-use-agent"
 version = "0.1.0"
 requires-python = ">=3.13"
 description = "Computer use RL agent for desktop GUI automation"
-dependencies = [
-    "pyautogui>=0.9.54",
-    "computer-rl-env",
-    "vllm",
-    "torch",
-    "torchvision",
-    "torchaudio",
-]
+dependencies = ["computer-rl-env"]
 
 [tool.uv.workspace]
 members = ["environments/computer_rl_env", "training"]
@@ -33,12 +26,7 @@ url = "https://wheels.vllm.ai/nightly/cu130"
 explicit = true
 
 [tool.uv.sources]
-openenv-core = { git = "https://github.com/meta-pytorch/OpenEnv.git", rev = "main" }
 computer-rl-env = { workspace = true }
-torch = { index = "pytorch-cu130" }
-torchvision = { index = "pytorch-cu130" }
-torchaudio = { index = "pytorch-cu130" }
-vllm = { index = "vllm-nightly-cu130" }
 
 [dependency-groups]
 dev = [

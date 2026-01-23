@@ -16,6 +16,7 @@ dependencies = [
     "pydantic>=2.12.5",
     "pynput>=1.8.1",
     "pyyaml>=6.0.3",
+    "python-xlib<0.33",
     "requests>=2.32.5",
     "uvicorn>=0.40.0",
 ]
@@ -40,4 +41,4 @@ packages = ["computer_rl_env"]
 include = ["/computer_rl_env", "/server"]
 
 [tool.uv.sources]
-openenv-core = { git = "https://github.com/meta-pytorch/OpenEnv", rev = "083c16a7172e7d8899cfef45f85421f90d85f12f" }
+openenv-core = { git = "https://github.com/meta-pytorch/OpenEnv", rev = "7ff934ccc9d00193bd84207c29597237b94ddb76" }
