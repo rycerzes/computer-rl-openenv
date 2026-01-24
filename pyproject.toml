@@ -62,7 +62,7 @@ packages = ["environments/computer_rl_env"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests/"]
-pythonpath = ["environments/computer_rl_env"]
+pythonpath = [".", "environments/computer_rl_env"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

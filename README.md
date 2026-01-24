@@ -1,1 +1,1 @@
- uv sync --all-packages --extra gpu
+uv sync --all-packages
