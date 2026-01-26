@@ -5,16 +5,16 @@ description = "GRPO training infrastructure for Computer RL Environment"
 requires-python = ">=3.13"
 dependencies = [
     "computer-rl-env",
-    "datasets>=2.14.4",
+    "datasets>=4.5.0",
     "pydantic>=2.12.5",
     "pyyaml>=6.0.3",
     "torch>=2.9.0",
     "torchaudio",
     "torchvision",
-    "trackio>=0.2.2",
+    "trackio>=0.15.0",
     "transformers>=4.57.6",
-    "trl>=0.11.4",
-    "vllm",
+    "trl>=0.27.1",
+    "vllm==0.15.0rc2.dev81+g40c35038d.cu130",
 ]
 
 [project.optional-dependencies]
