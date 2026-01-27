@@ -14,7 +14,7 @@ dependencies = [
     "trackio>=0.15.0",
     "transformers>=4.57.6",
     "trl>=0.27.1",
-    "vllm==0.15.0rc2.dev81+g40c35038d.cu130",
+    "vllm==0.12.0",
 ]
 
 [project.optional-dependencies]
@@ -30,10 +30,5 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["training"]
 
-# Index configuration is inherited from workspace root pyproject.toml
 [tool.uv.sources]
-torch = { index = "pytorch-cu130" }
-vllm = { index = "vllm-nightly-cu130" }
 computer-rl-env = { workspace = true }
-torchvision = { index = "pytorch-cu130" }
-torchaudio = { index = "pytorch-cu130" }

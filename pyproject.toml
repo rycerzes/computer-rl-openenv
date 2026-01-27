@@ -15,18 +15,6 @@ members = ["environments/computer_rl_env", "training"]
 [tool.uv]
 environments = ["sys_platform == 'linux'"]
 
-[[tool.uv.index]]
-name = "pytorch-cu130"
-url = "https://download.pytorch.org/whl/cu130"
-explicit = true
-
-[[tool.uv.index]]
-name = "vllm-nightly-cu130"
-url = "https://wheels.vllm.ai/nightly/cu130"
-explicit = true
-
-[tool.uv.sources]
-computer-rl-env = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -37,7 +25,8 @@ dev = [
     "ruff>=0.14.11",
     "ty>=0.0.11",
 ]
-
+[tool.uv.sources]
+computer-rl-env = { workspace = true }
 [tool.ruff]
 line-length = 100
 target-version = "py313"
