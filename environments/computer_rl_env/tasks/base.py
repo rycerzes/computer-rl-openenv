@@ -12,9 +12,9 @@ class EvaluatorConfig(BaseModel):
     """
     Configuration for the task evaluator, matching OSWorld schema.
     """
-    func: str # e.g., "match_in_list", "check_file"
-    result: Dict[str, Any] = Field(default_factory=dict)
-    expected: Dict[str, Any] = Field(default_factory=dict)
+    func: Union[str, List[str]] # e.g., "match_in_list", "check_file"
+    result: Union[Dict[str, Any], List[Dict[str, Any]]] = Field(default_factory=dict)
+    expected: Union[Dict[str, Any], List[Dict[str, Any]]] = Field(default_factory=dict)
     postconfig: List[ConfigStep] = Field(default_factory=list)
 
 class Task(BaseModel):
