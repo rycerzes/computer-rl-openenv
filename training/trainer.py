@@ -70,7 +70,7 @@ def main(config_path: str):
     print(f"Loading config from {config_path}...")
     config = load_config(config_path)
     
-    # 1. Load Tasks & Create Dataset
+    # Load Tasks & Create Dataset
     print(f"Loading tasks from {config.task_catalog_path}...")
     task_loader = TaskLoader()
     # Load tasks from registry file (e.g., test_small.json)
@@ -95,9 +95,9 @@ def main(config_path: str):
             for t in tasks
         ])
     
-    # 2. Prepare Processor/Tokenizer
+    # Prepare Processor/Tokenizer
     print(f"Loading processor for {config.model_name_or_path}...")
-    # usage of processor depends on model type (Qwen2-VL uses processor)
+    # usage of processor depends on model type
     try:
         processor = AutoProcessor.from_pretrained(config.model_name_or_path, trust_remote_code=True)
         tokenizer = processor.tokenizer
@@ -109,7 +109,7 @@ def main(config_path: str):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # 3. Configure GRPOTrainer
+    # Configure GRPOTrainer
     print("Configuring GRPOTrainer...")
     grpo_config = GRPOConfig(
         output_dir=config.output_dir,
@@ -119,8 +119,6 @@ def main(config_path: str):
         gradient_accumulation_steps=config.gradient_accumulation_steps,
         max_grad_norm=config.max_grad_norm,
         warmup_ratio=config.warmup_ratio,
-        logging_steps=config.logging_steps,
-        save_steps=config.save_steps,
         logging_steps=config.logging_steps,
         save_steps=config.save_steps,
         report_to=config.report_to,
@@ -141,10 +139,10 @@ def main(config_path: str):
     rollout_fn = create_rollout_func(
         openenv_server_url=config.openenv_server_url,
         max_steps=50, # Default max steps, could be configurable
-        use_vision=True, # Qwen2-VL is multimodal
+        use_vision=True, 
     )
 
-    # 4. Initialize Trainer
+    # Initialize Trainer
     trainer = GRPOTrainer(
         model=config.model_name_or_path,
         processing_class=tokenizer, 
@@ -158,11 +156,9 @@ def main(config_path: str):
         rollout_func=rollout_fn,
     )
     
-    # 5. Train
     print("Starting training...")
     trainer.train()
     
-    # 6. Save
     print(f"Saving model to {config.output_dir}...")
     trainer.save_model(config.output_dir)
     if config.push_to_hub and config.hf_repo_id:
