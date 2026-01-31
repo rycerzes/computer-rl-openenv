@@ -48,8 +48,13 @@ class TrainingConfig:
     
     # vLLM Params
     use_vllm: bool = True
+    vllm_mode: str = "server"  # "server" or "colocate"
+    vllm_server_base_url: Optional[str] = None  # e.g., "http://localhost:8001/v1"
     vllm_gpu_memory_utilization: float = 0.6
     vllm_tensor_parallel_size: int = 1
+    
+    # Memory Optimization
+    gradient_checkpointing: bool = True
     
     # Reporting
     report_to: list[str] = field(default_factory=lambda: ["trackio"])
@@ -131,7 +136,13 @@ def main(config_path: str):
         
         # vLLM
         use_vllm=config.use_vllm,
+        vllm_mode=config.vllm_mode,
+        vllm_server_base_url=config.vllm_server_base_url,
         vllm_gpu_memory_utilization=config.vllm_gpu_memory_utilization,
+        vllm_tensor_parallel_size=config.vllm_tensor_parallel_size,
+        
+        # Memory Optimization
+        gradient_checkpointing=config.gradient_checkpointing,
     )
     
     # Create custom rollout function with bound arguments
