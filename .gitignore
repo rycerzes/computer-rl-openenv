@@ -8,3 +8,19 @@ wheels/
 
 # Virtual environments
 .venv
+
+evaluation_examples/
+
+docs/
+tests/
+tests/**/phase*/
+scripts/
+.vscode/
+*nul*
+*.png
+
+OSWorld/
+openenv/
+AgentRL/
+ComputerRL/
+# We spend all our lives building walls, in order to keep us safe. But the walls do not work when the enemy is within

@@ -1,24 +1,24 @@
-from pyatspi.registry import *
-from pyatspi.application import *
-from pyatspi.constants import *
-from pyatspi.editabletext import *
-from pyatspi.role import *
-from pyatspi.state import *
-from pyatspi.text import *
-from pyatspi.document import *
-from pyatspi.utils import *
+from _typeshed import Incomplete
 from pyatspi.action import *
-from pyatspi.component import *
+from pyatspi.appevent import *
+from pyatspi.application import *
 from pyatspi.collection import *
+from pyatspi.component import *
+from pyatspi.constants import *
+from pyatspi.document import *
+from pyatspi.editabletext import *
 from pyatspi.hypertext import *
 from pyatspi.image import *
+from pyatspi.interface import *
+from pyatspi.registry import *
+from pyatspi.role import *
 from pyatspi.selection import *
+from pyatspi.state import *
 from pyatspi.table import *
 from pyatspi.tablecell import *
+from pyatspi.text import *
+from pyatspi.utils import *
 from pyatspi.value import *
-from pyatspi.appevent import *
-from pyatspi.interface import *
-from _typeshed import Incomplete
 
 Registry: Incomplete
 

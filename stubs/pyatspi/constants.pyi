@@ -1,5 +1,5 @@
-from pyatspi.state import *
 from _typeshed import Incomplete
+from pyatspi.state import *
 
 DESKTOP_COORDS: int
 WINDOW_COORDS: int

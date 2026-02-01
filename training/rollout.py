@@ -186,9 +186,7 @@ def rollout_func(
 
     # Get configuration from trainer args
     # These are custom fields we add to GRPOConfig
-    openenv_server_url = getattr(
-        trainer.args, "openenv_server_url", "http://localhost:8000"
-    )
+    openenv_server_url = getattr(trainer.args, "openenv_server_url", "http://localhost:8000")
     max_steps = getattr(trainer.args, "max_episode_steps", 50)
     use_vision = getattr(trainer.args, "use_vision", False)
     num_parallel_envs = getattr(trainer.args, "num_parallel_envs", 1)
@@ -225,8 +223,7 @@ def rollout_func(
         # Parallel execution with ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=num_parallel_envs) as executor:
             futures = {
-                executor.submit(run_single_episode, prompt): i
-                for i, prompt in enumerate(prompts)
+                executor.submit(run_single_episode, prompt): i for i, prompt in enumerate(prompts)
             }
 
             # Collect results in order

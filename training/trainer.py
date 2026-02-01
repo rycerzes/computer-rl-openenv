@@ -1,33 +1,25 @@
-import os
-import sys
-import yaml
 import argparse
-from typing import Optional
 from dataclasses import dataclass, field
+from typing import Optional
 
-import torch
-from datasets import Dataset
-from transformers import AutoTokenizer, AutoProcessor
-
-from trl import GRPOTrainer, GRPOConfig
-
-from .rollout import rollout_func, create_rollout_func
-from .rewards import (
-    reward_task_success,
-    reward_efficiency,
-    reward_action_diversity
-)
-# Assuming computer_rl_env is installed in the environment
+import yaml
 from computer_rl_env.tasks.loader import TaskLoader
+from datasets import Dataset
+from transformers import AutoProcessor, AutoTokenizer
+from trl import GRPOConfig, GRPOTrainer
+
+from .rewards import reward_action_diversity, reward_efficiency, reward_task_success
+from .rollout import create_rollout_func
 
 
 @dataclass
 class TrainingConfig:
     """Wrapper for training configuration."""
+
     model_name_or_path: str
     output_dir: str
     task_catalog_path: str = "tasks/tasks.yaml"
-    
+
     # Training Params
     num_train_epochs: int = 1
     learning_rate: float = 1e-5
@@ -37,25 +29,25 @@ class TrainingConfig:
     warmup_ratio: float = 0.1
     logging_steps: int = 1
     save_steps: int = 100
-    
+
     # Generation Params
     max_new_tokens: int = 1024
     temperature: float = 1.0
     num_generations: int = 4
-    
+
     # Environment Params
     openenv_server_url: str = "http://localhost:8000"
-    
+
     # vLLM Params
     use_vllm: bool = True
     vllm_mode: str = "server"  # "server" or "colocate"
     vllm_server_base_url: Optional[str] = None  # e.g., "http://localhost:8001/v1"
     vllm_gpu_memory_utilization: float = 0.6
     vllm_tensor_parallel_size: int = 1
-    
+
     # Memory Optimization
     gradient_checkpointing: bool = True
-    
+
     # Reporting
     report_to: list[str] = field(default_factory=lambda: ["trackio"])
     trackio_space_id: Optional[str] = None
@@ -74,7 +66,7 @@ def main(config_path: str):
     """Main training entry point."""
     print(f"Loading config from {config_path}...")
     config = load_config(config_path)
-    
+
     # Load Tasks & Create Dataset
     print(f"Loading tasks from {config.task_catalog_path}...")
     task_loader = TaskLoader()
@@ -87,19 +79,18 @@ def main(config_path: str):
         # Fallback to dummy data only for testing/debugging if loading fails
         print("Falling back to dummy dataset...")
         tasks = []
-        dataset = Dataset.from_list([
-            {"prompt": "Open the calculator application."},
-            {"prompt": "Launch Google Chrome and go to github.com."},
-        ])
+        dataset = Dataset.from_list(
+            [
+                {"prompt": "Open the calculator application."},
+                {"prompt": "Launch Google Chrome and go to github.com."},
+            ]
+        )
 
     if tasks:
         # Create dataset from actual tasks
         # Each item is just the instruction prompt
-        dataset = Dataset.from_list([
-            {"prompt": t.instruction, "task_id": t.id} 
-            for t in tasks
-        ])
-    
+        dataset = Dataset.from_list([{"prompt": t.instruction, "task_id": t.id} for t in tasks])
+
     # Prepare Processor/Tokenizer
     print(f"Loading processor for {config.model_name_or_path}...")
     # usage of processor depends on model type
@@ -128,35 +119,32 @@ def main(config_path: str):
         save_steps=config.save_steps,
         report_to=config.report_to,
         trackio_space_id=config.trackio_space_id,
-        
         # Generation
         max_completion_length=config.max_new_tokens,
         temperature=config.temperature,
         num_generations=config.num_generations,
-        
         # vLLM
         use_vllm=config.use_vllm,
         vllm_mode=config.vllm_mode,
         vllm_server_base_url=config.vllm_server_base_url,
         vllm_gpu_memory_utilization=config.vllm_gpu_memory_utilization,
         vllm_tensor_parallel_size=config.vllm_tensor_parallel_size,
-        
         # Memory Optimization
         gradient_checkpointing=config.gradient_checkpointing,
     )
-    
+
     # Create custom rollout function with bound arguments
     # We use the factory method to inject the server URL and other settings
     rollout_fn = create_rollout_func(
         openenv_server_url=config.openenv_server_url,
-        max_steps=50, # Default max steps, could be configurable
-        use_vision=True, 
+        max_steps=50,  # Default max steps, could be configurable
+        use_vision=True,
     )
 
     # Initialize Trainer
     trainer = GRPOTrainer(
         model=config.model_name_or_path,
-        processing_class=tokenizer, 
+        processing_class=tokenizer,
         reward_funcs=[
             reward_task_success,
             reward_efficiency,
@@ -166,16 +154,16 @@ def main(config_path: str):
         args=grpo_config,
         rollout_func=rollout_fn,
     )
-    
+
     print("Starting training...")
     trainer.train()
-    
+
     print(f"Saving model to {config.output_dir}...")
     trainer.save_model(config.output_dir)
     if config.push_to_hub and config.hf_repo_id:
         trainer.push_to_hub(config.hf_repo_id)
-        
-        
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, required=True, help="Path to YAML training config")

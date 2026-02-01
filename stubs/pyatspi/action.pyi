@@ -1,6 +1,6 @@
-from pyatspi.utils import *
-from pyatspi.interface import *
 from _typeshed import Incomplete
+from pyatspi.interface import *
+from pyatspi.utils import *
 
 __all__ = ['Action']
 

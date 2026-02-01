@@ -1,11 +1,13 @@
 import logging
-import time
 import socket
+import time
+
 import docker
 import requests
-from docker.errors import NotFound, APIError
+from docker.errors import APIError, NotFound
 
 logger = logging.getLogger(__name__)
+
 
 class DockerProvider:
     def __init__(self, image_name: str = "computer-rl-env:latest"):
@@ -27,7 +29,7 @@ class DockerProvider:
             self.stop()
 
         self.port = port or self._get_free_port()
-        
+
         try:
             logger.info(f"Starting container from image {self.image_name} on port {self.port}")
             self.container = self.client.containers.run(
@@ -36,14 +38,14 @@ class DockerProvider:
                 ports={"8000/tcp": self.port},
                 environment={"DISPLAY": ":99"},
                 cap_add=["SYS_ADMIN"],  # Often needed for GUI automation
-                shm_size="2g",         # Prevent browser crashes
+                shm_size="2g",  # Prevent browser crashes
             )
-            
+
             # Wait for container to be ready
             base_url = f"http://localhost:{self.port}"
             self._wait_for_ready(base_url)
             return base_url
-            
+
         except Exception as e:
             logger.error(f"Failed to start container: {e}")
             self.stop()
@@ -82,7 +84,7 @@ class DockerProvider:
             except requests.RequestException:
                 pass
             time.sleep(1)
-        
+
         raise TimeoutError(f"Environment server failed to start within {timeout}s")
 
     def execute(self, cmd: str) -> str:

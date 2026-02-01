@@ -1,6 +1,6 @@
+from _typeshed import Incomplete
 from pyatspi.atspienum import *
 from pyatspi.utils import *
-from _typeshed import Incomplete
 
 __all__ = ['Collection', 'SortOrder', 'MatchType', 'TreeTraversalType']
 

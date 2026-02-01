@@ -99,7 +99,12 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         if isinstance(computer_action, MouseMove):
             self.mouse_controller.move(computer_action.x, computer_action.y)
         elif isinstance(computer_action, Click):
-            self.mouse_controller.click(computer_action.x, computer_action.y, computer_action.button, computer_action.num_clicks)
+            self.mouse_controller.click(
+                computer_action.x,
+                computer_action.y,
+                computer_action.button,
+                computer_action.num_clicks,
+            )
         elif isinstance(computer_action, TypeText):
             self.keyboard_controller.type_text(computer_action.text)
         elif isinstance(computer_action, PressKey):
@@ -107,9 +112,16 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         elif isinstance(computer_action, HotKey):
             self.keyboard_controller.press_hotkey(*computer_action.keys)
         elif isinstance(computer_action, Scroll):
-            self.mouse_controller.scroll(computer_action.x, computer_action.y, computer_action.direction, computer_action.amount)
+            self.mouse_controller.scroll(
+                computer_action.x,
+                computer_action.y,
+                computer_action.direction,
+                computer_action.amount,
+            )
         elif isinstance(computer_action, Drag):
-            self.mouse_controller.drag(computer_action.x1, computer_action.y1, computer_action.x2, computer_action.y2)
+            self.mouse_controller.drag(
+                computer_action.x1, computer_action.y1, computer_action.x2, computer_action.y2
+            )
         elif isinstance(computer_action, Wait):
             time.sleep(computer_action.seconds)
         elif computer_action.action_type == "done":

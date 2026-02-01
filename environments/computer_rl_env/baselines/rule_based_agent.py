@@ -1,6 +1,6 @@
 import re
-import time
-from typing import List, Dict, Tuple, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 
 class RuleBasedAgent:
     """
@@ -12,21 +12,23 @@ class RuleBasedAgent:
         """Initialize RuleBasedAgent."""
         pass
 
-    def predict(self, instruction: str, observation: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]]]:
+    def predict(
+        self, instruction: str, observation: Dict[str, Any]
+    ) -> Tuple[str, List[Dict[str, Any]]]:
         """
         Apply simple rules to select actions based on instruction and observation.
-        
+
         Args:
             instruction: The task instruction string.
             observation: The current observation dictionary.
-            
+
         Returns:
             Tuple of (response_text, list_of_actions).
         """
         # Parse accessibility tree from observation
         acc_tree = observation.get("accessibility_tree", "")
-        screenshot = observation.get("screenshot", None) # Not used in simple rules yet
-        
+        observation.get("screenshot", None)  # Not used in simple rules yet
+
         actions = []
         response_text = "Analyzing screen..."
 
@@ -42,13 +44,13 @@ class RuleBasedAgent:
                 if "for" in words:
                     idx = words.index("for")
                     if idx + 1 < len(words):
-                        search_term = " ".join(words[idx+1:])
-                
+                        search_term = " ".join(words[idx + 1 :])
+
                 actions.append({"action_type": "type", "text": search_term})
                 actions.append({"action_type": "key", "key": "enter"})
                 response_text = f"Searching for '{search_term}'"
                 return response_text, actions
-            
+
             # Fallback: Open App Finder if search bar not found
             if not getattr(self, "_app_finder_opened", False):
                 actions.append({"action_type": "key", "key": "alt+f3"})
@@ -58,16 +60,16 @@ class RuleBasedAgent:
                 return response_text, actions
             else:
                 # App finder assumed open, type query
-                search_term = "calculator" # default
+                search_term = "calculator"  # default
                 words = instruction.split()
                 if "for" in words:
                     idx = words.index("for")
                     if idx + 1 < len(words):
-                        search_term = " ".join(words[idx+1:])
-                
+                        search_term = " ".join(words[idx + 1 :])
+
                 actions.append({"action_type": "type", "text": search_term})
                 actions.append({"action_type": "key", "key": "enter"})
-                self._app_finder_opened = False # Reset
+                self._app_finder_opened = False  # Reset
                 response_text = f"Typing '{search_term}' in App Finder"
                 return response_text, actions
 
@@ -79,15 +81,15 @@ class RuleBasedAgent:
             if "open" in words:
                 idx = words.index("open")
                 if idx + 1 < len(words):
-                    app_name = words[idx+1]
-            
+                    app_name = words[idx + 1]
+
             if app_name:
                 coords = self._find_element(acc_tree, [app_name])
                 if coords:
-                     actions.append({"action_type": "double_click", "coordinate": coords})
-                     response_text = f"Opening {app_name}"
-                     return response_text, actions
-            
+                    actions.append({"action_type": "double_click", "coordinate": coords})
+                    response_text = f"Opening {app_name}"
+                    return response_text, actions
+
             # Fallback: Open App Finder
             if not getattr(self, "_app_finder_opened", False):
                 actions.append({"action_type": "key", "key": "alt+f3"})
@@ -96,21 +98,21 @@ class RuleBasedAgent:
                 response_text = "Opening App Finder (Alt+F3)"
                 return response_text, actions
             else:
-                 actions.append({"action_type": "type", "text": app_name or "terminal"})
-                 actions.append({"action_type": "key", "key": "enter"})
-                 self._app_finder_opened = False
-                 response_text = f"Typing '{app_name}' in App Finder"
-                 return response_text, actions
+                actions.append({"action_type": "type", "text": app_name or "terminal"})
+                actions.append({"action_type": "key", "key": "enter"})
+                self._app_finder_opened = False
+                response_text = f"Typing '{app_name}' in App Finder"
+                return response_text, actions
 
         # Rule 3: Click generic buttons if mentioned
         target_name = None
         instruction_lower = instruction.lower()
         if "click" in instruction_lower:
-             # Extract what to click "click [target]"
-             match = re.search(r"click (?:on )?(?:the )?([\w\s]+)", instruction_lower)
-             if match:
-                 target_name = match.group(1).strip()
-        
+            # Extract what to click "click [target]"
+            match = re.search(r"click (?:on )?(?:the )?([\w\s]+)", instruction_lower)
+            if match:
+                target_name = match.group(1).strip()
+
         if target_name:
             coords = self._find_element(acc_tree, [target_name])
             if coords:
@@ -121,7 +123,7 @@ class RuleBasedAgent:
         # Fallback: Random action if no rules trigger (or maybe just wait)
         response_text = "No rule matched, waiting."
         actions.append({"action_type": "wait", "duration": 1.0})
-        
+
         return response_text, actions
 
     def _find_element(self, tree: str, keywords: List[str]) -> Optional[List[int]]:
@@ -130,7 +132,7 @@ class RuleBasedAgent:
         This is a placeholder logic as the tree format depends on AccessibilityParser implementation.
         Assuming tree format: "Role: Name [x, y, w, h]" or similar.
         """
-        lines = tree.split('\n')
+        lines = tree.split("\n")
         for line in lines:
             line_lower = line.lower()
             for kw in keywords:
@@ -141,7 +143,7 @@ class RuleBasedAgent:
                     if match:
                         x, y, w, h = map(int, match.groups())
                         return [x + w // 2, y + h // 2]
-                    
+
                     # Regex for (x, y)
                     match = re.search(r"\((\d+), (\d+)\)", line)
                     if match:

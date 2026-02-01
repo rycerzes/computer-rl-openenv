@@ -1,16 +1,15 @@
 import concurrent.futures
-import time
 import logging
+import time
 import traceback
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List
 
 from ..server.environment import ComputerEnvironment
 from ..tasks.base import Task
 from .metrics import (
-    compute_success_rate,
-    compute_efficiency_score,
     compute_category_breakdown,
-    generate_report,
+    compute_efficiency_score,
+    compute_success_rate,
 )
 
 logger = logging.getLogger(__name__)

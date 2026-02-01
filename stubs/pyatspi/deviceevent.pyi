@@ -1,6 +1,7 @@
-from pyatspi.atspienum import *
-from _typeshed import Incomplete
 from collections.abc import Generator
+
+from _typeshed import Incomplete
+from pyatspi.atspienum import *
 
 class PressedEventType(AtspiEnum): ...
 

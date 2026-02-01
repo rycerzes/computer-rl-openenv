@@ -141,9 +141,7 @@ def _parse_text_action(text: str) -> ComputerAction:
     text_lower = text.lower()
 
     # Click pattern: click at (x, y) or click (x, y)
-    click_match = re.search(
-        r"click\s*(?:at\s*)?\(?(\d+)\s*,\s*(\d+)\)?", text_lower
-    )
+    click_match = re.search(r"click\s*(?:at\s*)?\(?(\d+)\s*,\s*(\d+)\)?", text_lower)
     if click_match:
         x, y = int(click_match.group(1)), int(click_match.group(2))
         return ComputerAction(action=Click(x=x, y=y))

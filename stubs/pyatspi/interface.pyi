@@ -1,5 +1,5 @@
-from pyatspi.utils import *
 from _typeshed import Incomplete
+from pyatspi.utils import *
 
 __all__ = ['interface']
 

@@ -1,6 +1,6 @@
 from openenv.core import create_app as openenv_create_app
 
-from ..models import ComputerAction, ComputerObservation, ComputerState
+from ..models import ComputerAction, ComputerObservation
 from .environment import ComputerEnvironment
 
 

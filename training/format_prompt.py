@@ -11,9 +11,8 @@ from io import BytesIO
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from PIL import Image
-
     from computer_rl_env.models import ComputerObservation
+    from PIL import Image
 
 
 def truncate_text(text: str, max_chars: int = 4000) -> str:
@@ -122,9 +121,7 @@ def format_chat_messages(
         system_prompt = """You are a computer control agent. You can interact with a desktop environment by executing actions.
 Respond with a single JSON action. Be precise with coordinates and action types."""
 
-    user_content = format_observation_prompt(
-        obs, use_vision=False, action_history=action_history
-    )
+    user_content = format_observation_prompt(obs, use_vision=False, action_history=action_history)
 
     messages = [
         {"role": "system", "content": system_prompt},

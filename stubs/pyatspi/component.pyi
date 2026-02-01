@@ -1,7 +1,7 @@
-from pyatspi.atspienum import *
-from pyatspi.utils import *
-from pyatspi.interface import *
 from _typeshed import Incomplete
+from pyatspi.atspienum import *
+from pyatspi.interface import *
+from pyatspi.utils import *
 
 __all__ = ['CoordType', 'XY_SCREEN', 'XY_WINDOW', 'XY_PARENT', 'ComponentLayer', 'Component', 'LAYER_BACKGROUND', 'LAYER_CANVAS', 'LAYER_INVALID', 'LAYER_LAST_DEFINED', 'LAYER_MDI', 'LAYER_OVERLAY', 'LAYER_POPUP', 'LAYER_WIDGET', 'LAYER_WINDOW', 'ScrollType', 'SCROLL_TOP_LEFT', 'SCROLL_BOTTOM_RIGHT', 'SCROLL_TOP_EDGE', 'SCROLL_BOTTOM_EDGE', 'SCROLL_LEFT_EDGE', 'SCROLL_RIGHT_EDGE', 'SCROLL_ANYWHERE']
 

@@ -69,6 +69,7 @@ class ComputerAction(Action):
     Action for the Computer Environment.
     Wraps the specific action variant to comply with OpenEnv Action schema.
     """
+
     action: ComputerActionVariant
 
 

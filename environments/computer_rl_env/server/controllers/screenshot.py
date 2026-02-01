@@ -14,6 +14,7 @@ except ImportError:
 
 import threading
 
+
 class ScreenCapture:
     def __init__(self, display: str = ":99"):
         self.display = display
@@ -22,7 +23,7 @@ class ScreenCapture:
     def capture(self, quality: int = 85) -> str:
         if not hasattr(self._local, "sct"):
             self._local.sct = mss.mss()
-            
+
         monitors = self._local.sct.monitors
         if len(monitors) > 1:
             screen = monitors[1]
@@ -32,7 +33,7 @@ class ScreenCapture:
         screenshot = self._local.sct.grab(screen)
 
         if HAS_PIL:
-            img = Image.frombytes("RGB", screenshot.size, screenshot.rgb) # pyright: ignore[reportPossiblyUnboundVariable]
+            img = Image.frombytes("RGB", screenshot.size, screenshot.rgb)  # pyright: ignore[reportPossiblyUnboundVariable]
             buffer = io.BytesIO()
             img.save(buffer, format="JPEG", quality=quality)
             return base64.b64encode(buffer.getvalue()).decode("utf-8")

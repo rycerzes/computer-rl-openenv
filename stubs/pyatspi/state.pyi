@@ -1,5 +1,5 @@
-from pyatspi.atspienum import *
 from _typeshed import Incomplete
+from pyatspi.atspienum import *
 
 class StateType(AtspiEnum): ...
 

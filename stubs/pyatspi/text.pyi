@@ -1,7 +1,7 @@
-from pyatspi.atspienum import *
-from pyatspi.utils import *
-from pyatspi.interface import *
 from _typeshed import Incomplete
+from pyatspi.atspienum import *
+from pyatspi.interface import *
+from pyatspi.utils import *
 
 __all__ = ['Text', 'TEXT_BOUNDARY_TYPE', 'TEXT_BOUNDARY_CHAR', 'TEXT_BOUNDARY_WORD_START', 'TEXT_BOUNDARY_WORD_END', 'TEXT_BOUNDARY_SENTENCE_START', 'TEXT_BOUNDARY_SENTENCE_END', 'TEXT_BOUNDARY_LINE_START', 'TEXT_BOUNDARY_LINE_END', 'TEXT_CLIP_TYPE', 'TEXT_CLIP_NONE', 'TEXT_CLIP_MIN', 'TEXT_CLIP_MAX', 'TEXT_CLIP_BOTH', 'TEXT_GRANULARITY_CHAR', 'TEXT_GRANULARITY_WORD', 'TEXT_GRANULARITY_SENTENCE', 'TEXT_GRANULARITY_LINE', 'TEXT_GRANULARITY_PARAGRAPH']
 

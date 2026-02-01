@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 def compute_success_rate(results: List[Dict[str, Any]]) -> float:
