@@ -1,65 +1,18 @@
 import argparse
-from dataclasses import dataclass, field
-from typing import Optional
 
-import yaml
 from computer_rl_env.tasks.loader import TaskLoader
 from datasets import Dataset
 from transformers import AutoProcessor, AutoTokenizer
 from trl import GRPOConfig, GRPOTrainer
 
+from .config import TrainingConfig
 from .rewards import reward_action_diversity, reward_efficiency, reward_task_success
 from .rollout import create_rollout_func
 
 
-@dataclass
-class TrainingConfig:
-    """Wrapper for training configuration."""
-
-    model_name_or_path: str
-    output_dir: str
-    task_catalog_path: str = "tasks/tasks.yaml"
-
-    # Training Params
-    num_train_epochs: int = 1
-    learning_rate: float = 1e-5
-    batch_size: int = 1
-    gradient_accumulation_steps: int = 8
-    max_grad_norm: float = 1.0
-    warmup_ratio: float = 0.1
-    logging_steps: int = 1
-    save_steps: int = 100
-
-    # Generation Params
-    max_new_tokens: int = 1024
-    temperature: float = 1.0
-    num_generations: int = 4
-
-    # Environment Params
-    openenv_server_url: str = "http://localhost:8000"
-
-    # vLLM Params
-    use_vllm: bool = True
-    vllm_mode: str = "server"  # "server" or "colocate"
-    vllm_server_base_url: Optional[str] = None  # e.g., "http://localhost:8001/v1"
-    vllm_gpu_memory_utilization: float = 0.6
-    vllm_tensor_parallel_size: int = 1
-
-    # Memory Optimization
-    gradient_checkpointing: bool = True
-
-    # Reporting
-    report_to: list[str] = field(default_factory=lambda: ["trackio"])
-    trackio_space_id: Optional[str] = None
-    push_to_hub: bool = False
-    hf_repo_id: Optional[str] = None
-
-
 def load_config(config_path: str) -> TrainingConfig:
     """Load configuration from YAML file."""
-    with open(config_path, "r") as f:
-        config_dict = yaml.safe_load(f)
-    return TrainingConfig(**config_dict)
+    return TrainingConfig.from_yaml(config_path)
 
 
 def main(config_path: str):
@@ -91,19 +44,101 @@ def main(config_path: str):
         # Each item is just the instruction prompt
         dataset = Dataset.from_list([{"prompt": t.instruction, "task_id": t.id} for t in tasks])
 
-    # Prepare Processor/Tokenizer
-    print(f"Loading processor for {config.model_name_or_path}...")
-    # usage of processor depends on model type
-    try:
-        processor = AutoProcessor.from_pretrained(config.model_name_or_path, trust_remote_code=True)
-        tokenizer = processor.tokenizer
-    except Exception:
-        # Fallback for text-only models
-        tokenizer = AutoTokenizer.from_pretrained(config.model_name_or_path, trust_remote_code=True)
-        processor = None
+    # Model & Tokenizer Loading
+    print(f"Loading model {config.model_name_or_path}...")
+    peft_config = None
 
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
+    if config.use_unsloth:
+        print("Using Unsloth FastVisionModel...")
+        from unsloth import FastVisionModel
+
+        # Load model using Unsloth (returns model and tokenizer)
+        model, tokenizer = FastVisionModel.from_pretrained(
+            model_name=config.model_name_or_path,
+            max_seq_length=config.max_prompt_length,
+            load_in_4bit=config.load_in_4bit,
+            fast_inference=False,
+            gpu_memory_utilization=config.vllm_gpu_memory_utilization,
+        )
+        processor = (
+            tokenizer  # FastVisionModel returns a wrapped tokenizer that often acts as processor
+        )
+
+        # Configure LoRA/PEFT via Unsloth
+        model = FastVisionModel.get_peft_model(
+            model,
+            finetune_vision_layers=False,
+            finetune_language_layers=True,
+            finetune_attention_modules=True,
+            finetune_mlp_modules=True,
+            r=config.lora_rank,
+            lora_alpha=config.lora_rank,
+            lora_dropout=0,
+            bias="none",
+            random_state=3407,
+            use_gradient_checkpointing="unsloth",
+        )
+    else:
+        # Standard generic loading
+        # Prepare Processor/Tokenizer
+        print(f"Loading processor for {config.model_name_or_path}...")
+        try:
+            processor = AutoProcessor.from_pretrained(
+                config.model_name_or_path, trust_remote_code=True
+            )
+            tokenizer = processor.tokenizer
+        except Exception:
+            # Fallback for text-only models
+            tokenizer = AutoTokenizer.from_pretrained(
+                config.model_name_or_name, trust_remote_code=True
+            )
+            processor = None
+
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        model = config.model_name_or_path
+        if config.load_in_4bit:
+            try:
+                from transformers import BitsAndBytesConfig
+            except ImportError:
+                raise ImportError("BitsAndBytes is required for 4-bit training.")
+
+            print(f"Loading model {config.model_name_or_path} in 4-bit...")
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype="float16",
+                bnb_4bit_quant_type="nf4",
+            )
+            model_kwargs = {
+                "quantization_config": quantization_config,
+                "low_cpu_mem_usage": True,
+            }
+            from transformers import AutoModelForImageTextToText
+
+            model = AutoModelForImageTextToText.from_pretrained(
+                config.model_name_or_path, **model_kwargs
+            )
+
+        if config.load_in_4bit or config.lora_rank > 0:
+            from peft import LoraConfig, TaskType
+
+            peft_config = LoraConfig(
+                task_type=TaskType.CAUSAL_LM,
+                r=config.lora_rank,
+                lora_alpha=config.lora_rank * 2,
+                target_modules=[
+                    "q_proj",
+                    "k_proj",
+                    "v_proj",
+                    "o_proj",
+                    "up_proj",
+                    "gate_proj",
+                    "down_proj",
+                ],
+                lora_dropout=0.05,
+                bias="none",
+            )
 
     # Configure GRPOTrainer
     print("Configuring GRPOTrainer...")
@@ -115,22 +150,31 @@ def main(config_path: str):
         gradient_accumulation_steps=config.gradient_accumulation_steps,
         max_grad_norm=config.max_grad_norm,
         warmup_ratio=config.warmup_ratio,
-        logging_steps=config.logging_steps,
+        logging_steps=config.save_steps,  # Map save_steps to logging as well for now
         save_steps=config.save_steps,
-        report_to=config.report_to,
-        trackio_space_id=config.trackio_space_id,
+        report_to=["trackio"],  # Fallback/default logic or from config if added
         # Generation
-        max_completion_length=config.max_new_tokens,
+        max_completion_length=config.max_completion_length,  # Note: variable name change in config.py vs original
         temperature=config.temperature,
         num_generations=config.num_generations,
         # vLLM
         use_vllm=config.use_vllm,
         vllm_mode=config.vllm_mode,
-        vllm_server_base_url=config.vllm_server_base_url,
+        vllm_server_base_url=config.vllm_server_url,  # name change in config.py
         vllm_gpu_memory_utilization=config.vllm_gpu_memory_utilization,
         vllm_tensor_parallel_size=config.vllm_tensor_parallel_size,
+        # GRPO / GSPO Specifics
+        optim=config.optim,
+        lr_scheduler_type=config.lr_scheduler_type,
+        adam_beta1=config.adam_beta1,
+        adam_beta2=config.adam_beta2,
+        weight_decay=config.weight_decay,
+        # loss_type=config.loss_type, # Might need to verify if supported in current trl version
+        max_prompt_length=config.max_prompt_length,
         # Memory Optimization
-        gradient_checkpointing=config.gradient_checkpointing,
+        gradient_checkpointing=True,  # Always force true for VLM
+        fp16=True,  # Default for unsloth
+        bf16=False,
     )
 
     # Create custom rollout function with bound arguments
@@ -143,7 +187,8 @@ def main(config_path: str):
 
     # Initialize Trainer
     trainer = GRPOTrainer(
-        model=config.model_name_or_path,
+        model=model,
+        # peft_config=peft_config, # Pass PEFT config if defined -- GRPOTrainer supports it
         processing_class=tokenizer,
         reward_funcs=[
             reward_task_success,
@@ -153,6 +198,7 @@ def main(config_path: str):
         train_dataset=dataset,
         args=grpo_config,
         rollout_func=rollout_fn,
+        peft_config=peft_config,
     )
 
     print("Starting training...")

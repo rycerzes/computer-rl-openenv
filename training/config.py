@@ -18,6 +18,16 @@ class TrainingConfig(BaseModel):
         default=False,
         description="Whether to use vision/multimodal model with screenshots",
     )
+    # Unsloth / PEFT
+    use_unsloth: bool = Field(
+        default=True,
+        description="Whether to use Unsloth's FastVisionModel",
+    )
+    load_in_4bit: bool = Field(
+        default=True,
+        description="Whether to use 4-bit quantization",
+    )
+    lora_rank: int = Field(default=16, ge=1, description="LoRA rank (r)")
 
     # Training hyperparameters
     num_train_epochs: int = Field(default=3, ge=1)
@@ -26,6 +36,21 @@ class TrainingConfig(BaseModel):
     gradient_accumulation_steps: int = Field(default=8, ge=1)
     warmup_ratio: float = Field(default=0.1, ge=0, le=1)
     max_grad_norm: float = Field(default=1.0, gt=0)
+
+    # Optimizer & Scheduler
+    optim: str = Field(default="adamw_8bit", description="Optimizer name")
+    lr_scheduler_type: str = Field(default="cosine", description="Learning rate scheduler type")
+    adam_beta1: float = Field(default=0.9, ge=0, le=1)
+    adam_beta2: float = Field(default=0.99, ge=0, le=1)
+    weight_decay: float = Field(default=0.1, ge=0)
+
+    # GRPO / GSPO Specific
+    loss_type: str = Field(default="dr_grpo", description="Loss function type (e.g., 'dr_grpo')")
+    importance_sampling_level: str = Field(
+        default="sequence",
+        description="GSPO importance sampling level",
+    )
+    max_prompt_length: int = Field(default=1024, ge=1)
 
     # vLLM configuration (CUDA 12+ required)
     use_vllm: bool = Field(default=True, description="Use vLLM for fast inference")
@@ -36,6 +61,12 @@ class TrainingConfig(BaseModel):
     vllm_server_url: str | None = Field(
         default=None,
         description="vLLM server URL for server mode (e.g., 'http://localhost:8080')",
+    )
+    vllm_gpu_memory_utilization: float = Field(
+        default=0.6,
+        ge=0.1,
+        le=1.0,
+        description="vLLM GPU memory utilization",
     )
     vllm_tensor_parallel_size: int = Field(
         default=1,
