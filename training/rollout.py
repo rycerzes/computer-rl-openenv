@@ -14,8 +14,9 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Any
 
-from computer_rl_env import ComputerEnvClient
-from computer_rl_env.models import ComputerAction, Done, Wait
+from environments.computer_rl_env.client import ComputerEnvClient
+from environments.computer_rl_env.managed_client import ManagedComputerEnvClient
+from environments.computer_rl_env.models import ComputerAction, Done, Wait
 
 from .format_prompt import format_chat_messages
 from .parse_action import action_to_string, parse_action_from_response
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
     from transformers import PreTrainedTokenizer
     from trl import GRPOTrainer
 
-    from computer_rl_env.models import ComputerObservation
+    from environments.computer_rl_env.models import ComputerObservation
 
 
 logger = logging.getLogger(__name__)
@@ -296,6 +297,8 @@ def create_rollout_func(
     max_steps: int = 50,
     use_vision: bool = False,
     num_parallel_envs: int = 1,
+    use_managed_client: bool = False,
+    docker_image: str = "computer-rl-env:latest",
 ):
     """Factory function to create a rollout_func with custom configuration.
 
@@ -307,6 +310,8 @@ def create_rollout_func(
         max_steps: Maximum steps per episode
         use_vision: Whether to use vision model with screenshots
         num_parallel_envs: Number of parallel environment instances
+        use_managed_client: Whether to use ManagedComputerEnvClient for clean resets
+        docker_image: Docker image to use for managed client
 
     Returns:
         A rollout function compatible with GRPOTrainer.rollout_func
@@ -326,7 +331,13 @@ def create_rollout_func(
         all_actions: list[list[str]] = []
 
         def run_single_episode(prompt: str) -> dict[str, Any]:
-            env = ComputerEnvClient(base_url=openenv_server_url)
+            if use_managed_client:
+                # Use managed client which handles container lifecycle
+                env = ManagedComputerEnvClient(image_name=docker_image)
+            else:
+                # Use standard client connecting to existing server
+                env = ComputerEnvClient(base_url=openenv_server_url)
+
             try:
                 env.connect()
                 return rollout_episode(
