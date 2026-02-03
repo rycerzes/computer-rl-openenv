@@ -19,6 +19,7 @@ dependencies = [
     "python-xlib<0.33",
     "requests>=2.32.5",
     "uvicorn>=0.40.0",
+    "rapidfuzz>=3.14.3",
 ]
 
 [project.optional-dependencies]

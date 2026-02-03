@@ -1,4 +1,5 @@
 import logging
+import os
 import socket
 import time
 
@@ -12,9 +13,25 @@ logger = logging.getLogger(__name__)
 class DockerProvider:
     def __init__(self, image_name: str = "computer-rl-env:latest"):
         self.image_name = image_name
-        self.client = docker.from_env()
+        try:
+            self.client = docker.from_env()
+            self.client.ping()  # Verify connection
+        except (docker.errors.DockerException, PermissionError):
+            # Fallback for Podman on Linux (common on Fedora/RHEL)
+            # Podman often uses a rootless socket in XDG_RUNTIME_DIR
+            uid = os.getuid()
+            podman_sock = (
+                os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{uid}") + "/podman/podman.sock"
+            )
+            if os.path.exists(podman_sock):
+                logger.info(f"Default docker socket failed, using Podman socket at {podman_sock}")
+                self.client = docker.DockerClient(base_url=f"unix://{podman_sock}")
+            else:
+                raise
+
         self.container = None
         self.port = None
+        self.cdp_port = None  # Chrome DevTools Protocol port
 
     def _get_free_port(self) -> int:
         """Find a free port on localhost."""
@@ -22,20 +39,31 @@ class DockerProvider:
             s.bind(("", 0))
             return s.getsockname()[1]
 
-    def start(self, port: int | None = None) -> str:
-        """Start container and return base URL (http://localhost:port)."""
+    def start(self, port: int | None = None, cdp_port: int | None = None) -> str:
+        """Start container and return base URL (http://localhost:port).
+
+        Args:
+            port: Port for the environment server (8000 inside container)
+            cdp_port: Port for Chrome DevTools Protocol (1337 inside container)
+        """
         if self.container:
             logger.warning("Container already running, stopping it first")
             self.stop()
 
         self.port = port or self._get_free_port()
+        self.cdp_port = cdp_port or self._get_free_port()
 
         try:
-            logger.info(f"Starting container from image {self.image_name} on port {self.port}")
+            logger.info(
+                f"Starting container from image {self.image_name} on port {self.port}, CDP port {self.cdp_port}"
+            )
             self.container = self.client.containers.run(
                 self.image_name,
                 detach=True,
-                ports={"8000/tcp": self.port},
+                ports={
+                    "8000/tcp": self.port,
+                    "1337/tcp": self.cdp_port,  # Chrome DevTools Protocol
+                },
                 environment={"DISPLAY": ":99"},
                 cap_add=["SYS_ADMIN"],  # Often needed for GUI automation
                 shm_size="2g",  # Prevent browser crashes
@@ -63,13 +91,19 @@ class DockerProvider:
             finally:
                 self.container = None
                 self.port = None
+                self.cdp_port = None
 
-    def revert_to_snapshot(self):
-        """Reset by stopping and starting fresh container (ComputerRL style)."""
+    def revert_to_snapshot(self, port: int | None = None) -> str:
+        """Reset by stopping and starting fresh container (OSWorld style).
+
+        Returns:
+            Base URL of the newly started container.
+        """
         logger.info("Reverting to snapshot (restarting container)")
+        saved_port = port or self.port
+        saved_cdp_port = self.cdp_port
         self.stop()
-        # Container will be started on next use/reset via start()
-        # Ideally the caller calls start() immediately after if they need it running
+        return self.start(port=saved_port, cdp_port=saved_cdp_port)
 
     def _wait_for_ready(self, base_url: str, timeout: int = 60):
         """Wait for environment server to be healthy."""
