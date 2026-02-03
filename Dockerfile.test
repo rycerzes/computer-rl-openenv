@@ -1,0 +1,183 @@
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+WORKDIR /opt/testenv
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    xvfb \
+    git \
+    build-essential \
+    linux-libc-dev \
+    python3-tk \
+    xfce4 \
+    xfce4-terminal \
+    firefox-esr \
+    libreoffice-writer \
+    libreoffice-calc \
+    libreoffice-impress \
+    vlc \
+    gimp \
+    thunderbird \
+    wmctrl \
+    xdotool \
+    supervisor \
+    dbus \
+    dbus-x11 \
+    curl \
+    wget \
+    gnupg \
+    software-properties-common \
+    gobject-introspection \
+    libgirepository1.0-dev \
+    libcairo2-dev \
+    pkg-config \
+    python3-lxml \
+    python3-pyatspi \
+    at-spi2-core \
+    ffmpeg \
+    scrot \
+    x11-utils \
+    dconf-cli \
+    xauth \
+    socat \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Chrome for Testing (pinned, reproducible, no auto-update)
+ARG CHROME_VERSION=145.0.7632.117
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    libasound2 libatk-bridge2.0-0 libatk1.0-0 libcairo2 libcups2 \
+    libdbus-1-3 libdrm2 libexpat1 libgbm1 libglib2.0-0 libnspr4 \
+    libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 \
+    libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
+    fonts-liberation \
+    && curl -fsSL "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chrome-linux64.zip" -o /tmp/chrome.zip \
+    && unzip /tmp/chrome.zip -d /opt/chrome-for-testing \
+    && ln -s /opt/chrome-for-testing/chrome-linux64/chrome /usr/local/bin/chrome \
+    && printf '%s\n' '#!/bin/sh' 'exec /usr/local/bin/chrome --no-sandbox --disable-dev-shm-usage --user-data-dir=/root/chrome-profile "$@"' > /usr/local/bin/google-chrome \
+    && chmod +x /usr/local/bin/google-chrome \
+    && ln -s /usr/local/bin/google-chrome /usr/local/bin/google-chrome-stable \
+    && rm -f /tmp/chrome.zip \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV DISPLAY=:99
+ENV GTK_MODULES=gail:atk-bridge
+ENV PYTHONUNBUFFERED=1
+ENV UV_COMPILE_BYTECODE=1
+
+# Install Python dependencies once at build time (without workspace source code)
+COPY pyproject.toml uv.lock ./
+COPY environments/computer_rl_env/pyproject.toml ./environments/computer_rl_env/pyproject.toml
+COPY training/pyproject.toml ./training/pyproject.toml
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --all-packages --dev --no-install-workspace
+
+ENV PATH="/opt/testenv/.venv/bin:$PATH"
+ENV PYTHONPATH="/workspace:/workspace/environments/computer_rl_env"
+
+RUN mkdir -p /workspace /var/log/supervisor /run/dbus /var/run/dbus
+
+RUN cat <<'EOF' > /etc/supervisord-test.conf
+[supervisord]
+nodaemon=true
+logfile=/var/log/supervisord.log
+pidfile=/var/run/supervisord.pid
+childlogdir=/var/log/supervisor
+user=root
+
+[unix_http_server]
+file=/var/run/supervisor.sock
+chmod=0700
+
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+
+[supervisorctl]
+serverurl=unix:///var/run/supervisor.sock
+
+[program:xvfb]
+command=Xvfb :99 -screen 0 1280x960x24 -ac +render -noreset
+autorestart=true
+priority=10
+
+[program:xfce4-session]
+command=xfce4-session
+environment=DISPLAY=":99"
+autorestart=true
+priority=20
+startsecs=5
+
+[program:chrome]
+command=chrome
+    --no-sandbox
+    --disable-dev-shm-usage
+    --disable-gpu
+    --disable-software-rasterizer
+    --user-data-dir=/root/chrome-profile
+    --remote-debugging-port=1337
+    --remote-debugging-address=0.0.0.0
+    --no-first-run
+    --disable-default-apps
+    --disable-popup-blocking
+    --disable-translate
+    --disable-background-networking
+    --disable-sync
+    --metrics-recording-only
+    --disable-hang-monitor
+    --disable-prompt-on-repost
+    --no-default-browser-check
+    --disable-client-side-phishing-detection
+    --disable-component-update
+    --password-store=basic
+    --use-mock-keychain
+    about:blank
+environment=DISPLAY=":99"
+autorestart=true
+priority=25
+startsecs=3
+
+[program:app]
+command=uvicorn computer_rl_env.server.app:create_app --host 0.0.0.0 --port 8000 --factory
+environment=DISPLAY=":99",PYTHONPATH="/workspace:/workspace/environments/computer_rl_env"
+directory=/workspace
+autorestart=true
+priority=30
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+EOF
+
+RUN cat <<'EOF' > /usr/local/bin/start-test-stack
+#!/bin/bash
+set -euo pipefail
+
+export DISPLAY="${DISPLAY:-:99}"
+mkdir -p /run/dbus /var/log/supervisor /var/run/dbus
+
+if [ -f /var/run/dbus/pid ]; then
+    rm -f /var/run/dbus/pid
+fi
+dbus-daemon --system --fork
+
+export DBUS_SESSION_BUS_ADDRESS="unix:path=/dev/shm/dbus_session_socket"
+if [ -S /dev/shm/dbus_session_socket ]; then
+    rm -f /dev/shm/dbus_session_socket
+fi
+dbus-daemon --session --fork --address="$DBUS_SESSION_BUS_ADDRESS"
+
+exec /usr/bin/supervisord -c /etc/supervisord-test.conf
+EOF
+
+RUN chmod +x /usr/local/bin/start-test-stack
+
+WORKDIR /workspace
+
+EXPOSE 8000
+EXPOSE 1337
+
+CMD ["/bin/bash"]
