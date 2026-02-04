@@ -11,8 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 class DockerProvider:
-    def __init__(self, image_name: str = "computer-rl-env:latest"):
+    def __init__(
+        self, image_name: str = "computer-rl-env:latest", container_name: str | None = None
+    ):
         self.image_name = image_name
+        self.container_name = container_name
         try:
             self.client = docker.from_env()
             self.client.ping()  # Verify connection
@@ -59,6 +62,7 @@ class DockerProvider:
             )
             self.container = self.client.containers.run(
                 self.image_name,
+                name=self.container_name,  # Pass name if provided
                 detach=True,
                 ports={
                     "8000/tcp": self.port,
