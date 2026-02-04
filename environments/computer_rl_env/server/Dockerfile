@@ -23,6 +23,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     wmctrl \
     xdotool \
     supervisor \
+    dbus \
     dbus-x11 \
     curl \
     wget \
@@ -73,6 +74,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
+EXPOSE 1337
 
 COPY environments/computer_rl_env/server/start.sh /usr/local/bin/
 RUN dos2unix /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
