@@ -1,6 +1,9 @@
 """General getters for evaluation."""
 
+import logging
 from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 
 def get_rule(env: Any, config: Dict[str, Any]) -> Any:
@@ -46,6 +49,47 @@ def get_vm_command_line(env: Any, config: Dict[str, Any]) -> str:
     try:
         result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30)
         return result.stdout
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def get_vm_command_error(env: Any, config: Dict[str, Any]) -> str:
+    """Execute a command in the VM and return stderr output.
+
+    Like get_vm_command_line but captures stderr instead of stdout.
+
+    Args:
+        env: Environment instance with docker_provider
+        config: Contains:
+            - command: command string or list to execute
+            - shell (bool): optional, whether to use shell (default False)
+
+    Returns:
+        stderr output as string, or None on failure
+    """
+    command = config.get("command", "")
+    if isinstance(command, list):
+        command = " ".join(command)
+
+    # Execute via docker provider — use shell redirection to isolate stderr
+    if hasattr(env, "docker_provider") and env.docker_provider:
+        container = getattr(env.docker_provider, "container", None)
+        if container:
+            try:
+                result = container.exec_run(["sh", "-c", f"{command} 2>&1 1>/dev/null"])
+                return result.output.decode("utf-8", errors="replace")
+            except Exception as e:
+                logger.error(f"Error executing command for stderr: {e}")
+                return None
+        # Fallback to execute() — but this only gives stdout
+        return env.docker_provider.execute(command)
+
+    # Fallback: try subprocess if running locally
+    import subprocess
+
+    try:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30)
+        return result.stderr
     except Exception as e:
         return f"Error: {e}"
 

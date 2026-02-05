@@ -7,6 +7,47 @@ from typing import Any, Dict, List, Optional, Union
 logger = logging.getLogger(__name__)
 
 
+def get_content_from_vm_file(env: Any, config: Dict[str, Any]) -> Any:
+    """Read file content directly from VM.
+
+    Downloads the file via get_vm_file, then extracts content based on
+    file_type and file_content parameters.
+
+    Args:
+        env: Environment instance with docker_provider and cache_dir
+        config: Contains:
+            - path (str): absolute path on the VM
+            - file_type (str): 'xlsx' or 'text'
+            - file_content (str): e.g. 'last_row' for xlsx
+
+    Returns:
+        Extracted content (list for xlsx last_row, string for text), or None if failed
+    """
+    path = config["path"]
+    file_path = get_vm_file(env, {"path": path, "dest": os.path.basename(path)})
+    if file_path is None:
+        logger.error(f"Failed to get file from VM: {path}")
+        return None
+
+    file_type = config.get("file_type", "text")
+    file_content = config.get("file_content", "")
+
+    if file_type == "xlsx":
+        import pandas as pd
+
+        if file_content == "last_row":
+            df = pd.read_excel(file_path)
+            last_row = df.iloc[-1]
+            return last_row.astype(str).tolist()
+        else:
+            raise NotImplementedError(f"xlsx content type '{file_content}' not supported")
+    elif file_type == "text":
+        with open(file_path, "r") as f:
+            return f.read()
+    else:
+        raise NotImplementedError(f"File type '{file_type}' not supported")
+
+
 def get_vm_file(env: Any, config: Dict[str, Any]) -> Optional[str]:
     """Download file from VM and return local path.
 

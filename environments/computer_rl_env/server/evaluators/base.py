@@ -1,14 +1,11 @@
+import logging
+from typing import Any, Optional
+
 from pydantic import BaseModel, Field
 
+from ...tasks.base import EvaluatorConfig, Task
 
-class TaskConfig(BaseModel):
-    id: str
-    instruction: str
-    setup: list[dict] = Field(default_factory=list)
-    evaluator: dict
-    max_steps: int = 50
-    timeout: int = 60
-    metadata: dict = Field(default_factory=dict)
+logger = logging.getLogger(__name__)
 
 
 class TaskManager:
@@ -16,19 +13,26 @@ class TaskManager:
         self.active_task = None
         self.observers = []
 
-    def setup(self, task_config: TaskConfig) -> bool:
-        for step in task_config.setup:
+    def setup(self, task: Task) -> bool:
+        steps = task.config
+        for step in steps:
             step_type = step.get("type")
 
             if step_type == "launch":
-                app = step.get("app")
+                params = step.get("parameters", step)
+                command = params.get("command", [])
+                app = command[0] if isinstance(command, list) and command else params.get("app")
                 if app:
                     self._launch_app(str(app))
             elif step_type == "download":
-                url = step.get("url")
-                path = step.get("path")
-                if url and path:
-                    self._download_file(str(url), str(path))
+                params = step.get("parameters", step)
+                files = params.get("files", [])
+                for f in files:
+                    url = f.get("url")
+                    path = f.get("path")
+                    if url and path:
+                        self._download_file(str(url), str(path))
+
             elif step_type == "create_file":
                 path = step.get("path")
                 if path:
@@ -38,10 +42,16 @@ class TaskManager:
                 if url:
                     self._open_url(str(url))
 
-        self.active_task = task_config
+        self.active_task = task
         return True
 
-    def evaluate(self, task_config: TaskConfig, elapsed_steps: int, env=None) -> tuple[bool, float]:
+    def evaluate(
+        self,
+        task: Task,
+        elapsed_steps: int,
+        env=None,
+        last_action: Optional[str] = None,
+    ) -> tuple[bool, float]:
         """Evaluate task completion using OSWorld-style evaluation.
 
         OSWorld evaluation flow:
@@ -50,95 +60,134 @@ class TaskManager:
         3. Compare with expected using metric
 
         Args:
-            task_config: Task configuration with evaluator
+            task: Task with evaluator configuration
             elapsed_steps: Number of steps taken
             env: Environment instance (for getters)
 
         Returns:
             (success, reward) tuple
         """
-        from .getters import GETTER_REGISTRY, get_result
+        from .getters import get_result
         from .metrics import METRIC_REGISTRY, evaluate_metric
 
-        evaluator_config = task_config.evaluator
-
-        # Handle legacy format (type/params)
-        if "type" in evaluator_config and "func" not in evaluator_config:
-            metric_type = evaluator_config.get("type")
-            params = evaluator_config.get("params", {})
-            if metric_type:
-                score = evaluate_metric(str(metric_type), **params)
-            else:
-                score = 0.0
-            success = score > 0
-            reward = score if success else -0.01 * elapsed_steps
-            return success, reward
-
-        # OSWorld format (func/result/expected)
-        func_name = evaluator_config.get("func", "")
+        ev = task.evaluator
 
         # Handle infeasible tasks
+        func_name = ev.func
         if func_name == "infeasible":
-            # Task is meant to be failed if agent tries
-            success = False
-            return success, 0.0
+            if last_action == "fail":
+                return True, 1.0
+            return False, 0.0
+
+        # If agent gives up on a feasible task
+        if last_action == "fail":
+            return False, 0.0
 
         # 1. Run postconfig if present
-        postconfig = evaluator_config.get("postconfig", [])
-        for step in postconfig:
+        for step in ev.postconfig:
             self._execute_config_step(step, env)
 
-        # 2. Fetch result via getter
-        result_config = evaluator_config.get("result", {})
-        result = None
-        if result_config:
-            getter_type = result_config.get("type", "")
-            if getter_type and getter_type in GETTER_REGISTRY:
-                try:
-                    result = get_result(getter_type, env, result_config)
-                except Exception as e:
-                    import logging
+        # Helper to get result/expected/options for a single metric index
+        def get_config_item(key: str, idx: int, is_list_mode: bool) -> Any:
+            item = getattr(ev, key, None)
+            if is_list_mode and isinstance(item, list):
+                if idx < len(item):
+                    return item[idx]
+                return None
+            return item
 
-                    logging.getLogger(__name__).error(f"Getter failed: {e}")
-                    result = None
+        # Determine if we are in multi-metric mode
+        is_multi_metric = isinstance(func_name, list)
+        metric_names = func_name if is_multi_metric else [func_name]
 
-        # 3. Get expected value
-        expected_config = evaluator_config.get("expected", {})
-        expected = None
-        if expected_config:
-            if isinstance(expected_config, dict) and "type" in expected_config:
-                getter_type = expected_config.get("type", "")
-                if getter_type and getter_type in GETTER_REGISTRY:
-                    expected = get_result(getter_type, env, expected_config)
+        # Conjunction mode: "and" (default) or "or"
+        conj = ev.conj
+
+        metric_scores = []
+
+        for i, metric in enumerate(metric_names):
+            # 2. Fetch result via getter
+            result_config = get_config_item("result", i, is_multi_metric)
+            result = None
+            if result_config:
+                getter_type = (
+                    result_config.get("type", "") if isinstance(result_config, dict) else ""
+                )
+                if getter_type:
+                    try:
+                        result = get_result(getter_type, env, result_config)
+                    except ValueError as e:
+                        logger.warning(
+                            f"Getter type '{getter_type}' not found for task {task.id}: {e}"
+                        )
+                        result = None
+                    except Exception as e:
+                        logger.error(f"Getter '{getter_type}' failed: {e}")
+                        result = None
+
+            # 3. Get expected value
+            expected_config = get_config_item("expected", i, is_multi_metric)
+            expected = None
+            if expected_config:
+                if isinstance(expected_config, dict) and "type" in expected_config:
+                    getter_type = expected_config.get("type", "")
+                    if getter_type:
+                        try:
+                            expected = get_result(getter_type, env, expected_config)
+                        except ValueError as e:
+                            logger.warning(
+                                f"Expected getter type '{getter_type}' not found for task {task.id}: {e}"
+                            )
+                            expected = expected_config
+                        except Exception as e:
+                            logger.error(f"Expected getter '{getter_type}' failed: {e}")
+                            expected = None
+                    else:
+                        expected = expected_config
                 else:
                     expected = expected_config
+
+            # 4. Get options
+            options = get_config_item("options", i, is_multi_metric)
+            if options is None:
+                options = {}
+
+            # 5. Call metric
+            current_score = 0.0
+            if metric in METRIC_REGISTRY:
+                try:
+                    if expected is not None:
+                        current_score = evaluate_metric(
+                            metric, result=result, expected=expected, **options
+                        )
+                    else:
+                        current_score = evaluate_metric(metric, result=result, **options)
+                except Exception as e:
+                    logger.error(f"Metric {metric} failed: {e}")
+                    current_score = 0.0
             else:
-                expected = expected_config
+                logger.warning(f"Unknown metric: {metric}")
+                current_score = 0.0
 
-        # 4. Get options
-        options = evaluator_config.get("options", {})
+            # Short-circuit logic
+            if conj == "and" and current_score == 0.0:
+                success = False
+                return success, -0.01 * elapsed_steps
+            if conj == "or" and current_score == 1.0:
+                success = True
+                return success, 1.0
 
-        # 5. Call metric
-        if func_name in METRIC_REGISTRY:
-            try:
-                if expected is not None:
-                    score = evaluate_metric(func_name, result=result, expected=expected, **options)
-                else:
-                    score = evaluate_metric(func_name, result=result, **options)
-            except Exception as e:
-                import logging
+            metric_scores.append(current_score)
 
-                logging.getLogger(__name__).error(f"Metric failed: {e}")
-                score = 0.0
-        else:
-            # Unknown metric
-            import logging
+        if not metric_scores:
+            final_score = 0.0
+        elif conj == "and":
+            final_score = sum(metric_scores) / len(metric_scores)
+        else:  # conj == "or"
+            final_score = max(metric_scores)
 
-            logging.getLogger(__name__).warning(f"Unknown metric: {func_name}")
-            score = 0.0
-
-        success = score > 0
-        reward = score if success else -0.01 * elapsed_steps
+        success = final_score > 0
+        reward = final_score if success else -0.01 * elapsed_steps
         return success, reward
 
     def _execute_config_step(self, step: dict, env=None) -> None:
@@ -167,6 +216,16 @@ class TaskManager:
             window_name = params.get("window_name", "")
             if env and hasattr(env, "docker_provider") and env.docker_provider:
                 env.docker_provider.execute(f'xdotool search --name "{window_name}" windowactivate')
+        elif step_type == "open":
+            path = params.get("path", "")
+            if env and hasattr(env, "docker_provider") and env.docker_provider:
+                env.docker_provider.execute(f"xdg-open '{path}' &")
+        elif step_type in ("command", "exec"):
+            # Aliases for "execute"
+            command = params.get("command", [])
+            if env and hasattr(env, "docker_provider") and env.docker_provider:
+                cmd_str = " ".join(command) if isinstance(command, list) else command
+                env.docker_provider.execute(cmd_str)
         elif step_type == "download":
             files = params.get("files", [])
             for f in files:
@@ -174,6 +233,8 @@ class TaskManager:
                 path = f.get("path", "")
                 if url and path:
                     self._download_file(url, path)
+        else:
+            logger.warning(f"Unhandled config step type: {step_type}")
 
     def teardown(self) -> None:
         self.observers.clear()
