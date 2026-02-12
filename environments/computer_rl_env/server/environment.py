@@ -1,28 +1,27 @@
+import logging
+import os
 import time
 import uuid
 from typing import Optional
 
+import pyautogui
 from openenv.core import Environment
 
+from ..tasks.base import Task
 from ..models import (
-    Click,
     ComputerAction,
     ComputerObservation,
     ComputerState,
-    Drag,
-    HotKey,
-    MouseMove,
-    PressKey,
-    Scroll,
-    TypeText,
-    Wait,
 )
 from .controllers.accessibility import AccessibilityParser
-from .controllers.keyboard import KeyboardController
-from .controllers.mouse import MouseController
 from .controllers.screenshot import ScreenCapture
-from .evaluators.base import TaskConfig, TaskManager
+from .evaluators.base import TaskManager
 from .rewards import RewardComputer
+
+logger = logging.getLogger(__name__)
+
+# Sentinel action strings (case-insensitive matching)
+_SENTINEL_ACTIONS = {"WAIT", "DONE", "FAIL"}
 
 
 class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, ComputerState]):
@@ -33,10 +32,13 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         self.display = display
         self.step_count = 0
         self.episode_id = None
-        self.current_task = None
+        self.current_task: Optional[Task] = None
 
-        self.mouse_controller = MouseController(display=display)
-        self.keyboard_controller = KeyboardController(display=display)
+        # Ensure DISPLAY is set for pyautogui
+        if "DISPLAY" not in os.environ:
+            os.environ["DISPLAY"] = display
+        pyautogui.FAILSAFE = False  # type: ignore
+
         self.screen_capture = ScreenCapture(display=display)
         self.accessibility_parser = AccessibilityParser()
 
@@ -55,13 +57,27 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
     ) -> ComputerObservation:
         self.episode_id = episode_id or str(uuid.uuid4())
         self.step_count = 0
-        self.current_task = kwargs.get("task_config")
         self.prev_observation = None
+
+        task_config = kwargs.get("task_config")
+        if task_config:
+            if isinstance(task_config, Task):
+                self.current_task = task_config
+            elif isinstance(task_config, dict):
+                # Ensure minimum required fields for Task model
+                if "id" not in task_config:
+                    task_config["id"] = self.episode_id
+                if "evaluator" not in task_config:
+                    task_config["evaluator"] = {"func": "infeasible"}
+                self.current_task = Task(**task_config)
+            else:
+                self.current_task = None
+        else:
+            self.current_task = None
 
         if self.current_task:
             task_manager = TaskManager()
-            task_config = TaskConfig(**self.current_task)
-            task_manager.setup(task_config)
+            task_manager.setup(self.current_task)
 
         screenshot = self.screen_capture.capture()
         acc_tree = self.accessibility_parser.parse()
@@ -70,7 +86,7 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         obs = ComputerObservation(
             screenshot_base64=screenshot,
             accessibility_tree=acc_tree,
-            instruction=self.current_task.get("instruction") if self.current_task else None,
+            instruction=self.current_task.instruction if self.current_task else None,
             active_window=active_info.get("active_window"),
             active_app=active_info.get("active_app"),
             step_count=0,
@@ -79,13 +95,44 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         self.prev_observation = obs
         return obs
 
-    def _evaluate_task_success(self) -> bool:
+    def _execute_pyautogui_action(self, action_str: str) -> str:
+        """Execute a pyautogui action string.
+
+        Args:
+            action_str: PyAutoGUI-style Python string or sentinel.
+
+        Returns:
+            Action category: 'wait', 'done', 'fail', or 'action'.
+        """
+        action_str = action_str.strip()
+        upper = action_str.upper()
+
+        # Handle sentinel strings
+        if upper == "WAIT":
+            time.sleep(1)
+            return "wait"
+        if upper == "DONE":
+            return "done"
+        if upper == "FAIL":
+            return "fail"
+
+        # Execute pyautogui string in sandboxed namespace
+        namespace = {"pyautogui": pyautogui, "time": time}
+        try:
+            exec(action_str, {"__builtins__": {}}, namespace)
+        except Exception as e:
+            logger.warning(f"Failed to execute action '{action_str}': {e}")
+
+        return "action"
+
+    def _evaluate_task_success(self, last_action: Optional[str] = None) -> bool:
         if not self.current_task:
             return False
 
         task_manager = TaskManager()
-        task_config = TaskConfig(**self.current_task)
-        success, _ = task_manager.evaluate(task_config, self.step_count)
+        success, _ = task_manager.evaluate(
+            self.current_task, self.step_count, env=self, last_action=last_action
+        )
         return success
 
     def step(
@@ -93,39 +140,8 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
     ) -> ComputerObservation:
         self.step_count += 1
 
-        # Unwrap the action variant from the wrapper
-        computer_action = action.action
-
-        if isinstance(computer_action, MouseMove):
-            self.mouse_controller.move(computer_action.x, computer_action.y)
-        elif isinstance(computer_action, Click):
-            self.mouse_controller.click(
-                computer_action.x,
-                computer_action.y,
-                computer_action.button,
-                computer_action.num_clicks,
-            )
-        elif isinstance(computer_action, TypeText):
-            self.keyboard_controller.type_text(computer_action.text)
-        elif isinstance(computer_action, PressKey):
-            self.keyboard_controller.press_key(computer_action.key)
-        elif isinstance(computer_action, HotKey):
-            self.keyboard_controller.press_hotkey(*computer_action.keys)
-        elif isinstance(computer_action, Scroll):
-            self.mouse_controller.scroll(
-                computer_action.x,
-                computer_action.y,
-                computer_action.direction,
-                computer_action.amount,
-            )
-        elif isinstance(computer_action, Drag):
-            self.mouse_controller.drag(
-                computer_action.x1, computer_action.y1, computer_action.x2, computer_action.y2
-            )
-        elif isinstance(computer_action, Wait):
-            time.sleep(computer_action.seconds)
-        elif computer_action.action_type == "done":
-            pass
+        # Execute the pyautogui action string
+        action_category = self._execute_pyautogui_action(action.action)
 
         time.sleep(0.5)
 
@@ -135,13 +151,13 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
 
         done = False
         if self.current_task:
-            max_steps = self.current_task.get("max_steps", 100)
+            max_steps = self.current_task.max_steps
             done = self.step_count >= max_steps
 
         curr_obs = ComputerObservation(
             screenshot_base64=screenshot,
             accessibility_tree=acc_tree,
-            instruction=self.current_task.get("instruction") if self.current_task else None,
+            instruction=self.current_task.instruction if self.current_task else None,
             active_window=active_info.get("active_window"),
             active_app=active_info.get("active_app"),
             step_count=self.step_count,
@@ -151,8 +167,8 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         prev_obs = self.prev_observation
         self.prev_observation = curr_obs
 
-        if done or computer_action.action_type == "done":
-            success = self._evaluate_task_success()
+        if done or action_category in ("done", "fail"):
+            success = self._evaluate_task_success(last_action=action_category)
             reward = self.reward_computer.compute(success, self.step_count, prev_obs, curr_obs)
             curr_obs.reward = reward
         else:
@@ -166,6 +182,6 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         return ComputerState(
             step_count=self.step_count,
             episode_id=self.episode_id,
-            current_task=self.current_task,
+            current_task=self.current_task.model_dump() if self.current_task else None,
             display=self.display,
         )

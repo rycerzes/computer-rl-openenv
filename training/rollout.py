@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from environments.computer_rl_env.client import ComputerEnvClient
 from environments.computer_rl_env.managed_client import ManagedComputerEnvClient
-from environments.computer_rl_env.models import ComputerAction, Done, Wait
+from environments.computer_rl_env.models import ComputerAction
 
 from .format_prompt import format_chat_messages
 from .parse_action import action_to_string, parse_action_from_response
@@ -120,14 +120,13 @@ def rollout_episode(
             action = parse_action_from_response(completion_text)
         except Exception as e:
             logger.warning(f"Action parsing failed: {e}, using wait action")
-            action = ComputerAction(action=Wait(seconds=1.0))
+            action = ComputerAction(action="WAIT")
 
-        action_type = action.action.action_type
-        actions.append(action_type)
+        actions.append(action.action)
         action_history.append(action_to_string(action))
 
-        # Check if model signaled done
-        if isinstance(action.action, Done):
+        # Check if model signaled done/fail
+        if action.action.upper() in ("DONE", "FAIL"):
             done = True
             break
 

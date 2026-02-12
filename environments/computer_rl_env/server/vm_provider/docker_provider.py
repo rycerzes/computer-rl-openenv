@@ -125,10 +125,23 @@ class DockerProvider:
 
         raise TimeoutError(f"Environment server failed to start within {timeout}s")
 
-    def execute(self, cmd: str) -> str:
+    def execute(
+        self,
+        cmd: str,
+        shell: bool = False,
+        background: bool = False,
+        timeout: int | None = None,
+    ) -> str:
         if self.container:
             try:
-                result = self.container.exec_run(cmd)
+                if shell:
+                    cmd = ["/bin/bash", "-c", cmd]
+
+                result = self.container.exec_run(cmd, detach=background)
+
+                if background:
+                    return "Background process started"
+
                 return result.output.decode("utf-8")
             except Exception as e:
                 logger.error(f"Command execution failed: {e}")
