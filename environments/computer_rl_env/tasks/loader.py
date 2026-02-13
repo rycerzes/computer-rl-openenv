@@ -24,7 +24,7 @@ class TaskLoader:
             if path.suffix == ".json":
                 data = json.load(f)
             elif path.suffix in [".yaml", ".yml"]:
-                # Keep legacy YAML support for now, but OSWorld uses JSON
+                # OSWorld uses JSON, but YAML is also supported
                 data = yaml.safe_load(f)
             else:
                 raise ValueError(f"Unsupported file extension: {path.suffix}")

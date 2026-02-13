@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Optional, Union
+from typing import Literal, Optional
 
 from openenv.core import Action, Observation, State
 from pydantic import BaseModel, Field
@@ -6,14 +6,14 @@ from pydantic import BaseModel, Field
 
 class MouseMove(BaseModel):
     action_type: Literal["move"] = "move"
-    x: int = Field(ge=0, le=1000)
-    y: int = Field(ge=0, le=1000)
+    x: int = Field(ge=0)
+    y: int = Field(ge=0)
 
 
 class Click(BaseModel):
     action_type: Literal["click"] = "click"
-    x: int = Field(ge=0, le=1000)
-    y: int = Field(ge=0, le=1000)
+    x: int = Field(ge=0)
+    y: int = Field(ge=0)
     button: Literal["left", "right", "middle"] = "left"
     num_clicks: Literal[1, 2] = 1
 
@@ -35,18 +35,18 @@ class HotKey(BaseModel):
 
 class Scroll(BaseModel):
     action_type: Literal["scroll"] = "scroll"
-    x: int = Field(ge=0, le=1000)
-    y: int = Field(ge=0, le=1000)
+    x: int = Field(ge=0)
+    y: int = Field(ge=0)
     direction: Literal["up", "down"] = "up"
     amount: int = Field(ge=1, le=10, default=1)
 
 
 class Drag(BaseModel):
     action_type: Literal["drag"] = "drag"
-    x1: int = Field(ge=0, le=1000)
-    y1: int = Field(ge=0, le=1000)
-    x2: int = Field(ge=0, le=1000)
-    y2: int = Field(ge=0, le=1000)
+    x1: int = Field(ge=0)
+    y1: int = Field(ge=0)
+    x2: int = Field(ge=0)
+    y2: int = Field(ge=0)
 
 
 class Wait(BaseModel):
@@ -58,19 +58,20 @@ class Done(BaseModel):
     action_type: Literal["done"] = "done"
 
 
-ComputerActionVariant = Annotated[
-    Union[MouseMove, Click, TypeText, PressKey, HotKey, Scroll, Drag, Wait, Done],
-    Field(discriminator="action_type"),
-]
+class Fail(BaseModel):
+    action_type: Literal["fail"] = "fail"
 
 
 class ComputerAction(Action):
-    """
-    Action for the Computer Environment.
-    Wraps the specific action variant to comply with OpenEnv Action schema.
+    """Action for the Computer Environment.
+
+    Accepts a pyautogui-style Python string (e.g. 'pyautogui.click(x=500, y=300)')
+    or a sentinel string: 'WAIT', 'DONE', 'FAIL'.
     """
 
-    action: ComputerActionVariant
+    action: str = Field(
+        description="PyAutoGUI-style Python string or sentinel: 'WAIT', 'DONE', 'FAIL'."
+    )
 
 
 class ComputerObservation(Observation):
