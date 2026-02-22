@@ -6,6 +6,25 @@ from .basic_os import (
     check_utc_time,
     is_in_vm_clickboard,
 )
+from .chrome import (
+    check_enabled_experiments,
+    check_font_size,
+    check_history_deleted,
+    compare_archive,
+    compare_htmls,
+    compare_pdf_images,
+    compare_pdfs,
+    is_added_to_steam_cart,
+    is_cookie_deleted,
+    is_expected_active_tab,
+    is_expected_active_tab_approximate,
+    is_expected_bookmarks,
+    is_expected_installed_extensions,
+    is_expected_search_query,
+    is_expected_tabs,
+    is_expected_url_pattern_match,
+    is_shortcut_on_desktop,
+)
 from .docs import (
     check_file_exists,
     check_highlighted_words,
@@ -318,6 +337,24 @@ METRIC_REGISTRY = {
     "check_python_file_by_gold_file": check_python_file_by_gold_file,
     "check_html_background_image": check_html_background_image,
     "compare_result_files": compare_result_files,
+    # Chrome
+    "is_expected_active_tab": is_expected_active_tab,
+    "is_expected_active_tab_approximate": is_expected_active_tab_approximate,
+    "is_expected_url_pattern_match": is_expected_url_pattern_match,
+    "is_expected_installed_extensions": is_expected_installed_extensions,
+    "is_expected_tabs": is_expected_tabs,
+    "is_expected_bookmarks": is_expected_bookmarks,
+    "is_expected_search_query": is_expected_search_query,
+    "compare_pdfs": compare_pdfs,
+    "compare_pdf_images": compare_pdf_images,
+    "compare_archive": compare_archive,
+    "compare_htmls": compare_htmls,
+    "is_cookie_deleted": is_cookie_deleted,
+    "is_shortcut_on_desktop": is_shortcut_on_desktop,
+    "check_history_deleted": check_history_deleted,
+    "check_enabled_experiments": check_enabled_experiments,
+    "check_font_size": check_font_size,
+    "is_added_to_steam_cart": is_added_to_steam_cart,
 }
 
 

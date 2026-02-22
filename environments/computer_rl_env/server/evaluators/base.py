@@ -275,6 +275,6 @@ class TaskManager:
             subprocess.Popen(["firefox", "--new-tab", url], start_new_session=True)
         except (FileNotFoundError, subprocess.SubprocessError):
             try:
-                subprocess.Popen(["google-chrome", "--new-tab", url], start_new_session=True)
+                subprocess.Popen(["chrome", "--new-tab", url], start_new_session=True)
             except (FileNotFoundError, subprocess.SubprocessError):
                 pass

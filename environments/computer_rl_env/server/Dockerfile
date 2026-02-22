@@ -38,9 +38,25 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     dconf-cli \
     xauth
 
-# Install Google Chrome
-RUN curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux-signing-key.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux-signing-key.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+# Install Chrome for Testing (pinned, reproducible, no auto-update)
+# See https://developer.chrome.com/blog/chrome-for-testing
+ARG CHROME_VERSION=145.0.7632.117
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends unzip \
+    # Shared libraries Chrome needs (normally pulled by the .deb package)
+    libasound2 libatk-bridge2.0-0 libatk1.0-0 libcairo2 libcups2 \
+    libdbus-1-3 libdrm2 libexpat1 libgbm1 libglib2.0-0 libnspr4 \
+    libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 \
+    libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
+    fonts-liberation \
+    && curl -fsSL "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chrome-linux64.zip" \
+       -o /tmp/chrome.zip \
+    && unzip /tmp/chrome.zip -d /opt/chrome-for-testing \
+    && ln -s /opt/chrome-for-testing/chrome-linux64/chrome /usr/local/bin/chrome \
+    && ln -s /usr/local/bin/chrome /usr/local/bin/google-chrome-stable \
+    && ln -s /usr/local/bin/chrome /usr/local/bin/google-chrome \
+    && rm /tmp/chrome.zip
 
 # Install VS Code
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg \
@@ -48,7 +64,7 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y google-chrome-stable code
+    apt-get update && apt-get install -y code
 
 # Clean up power management packages to prevent blanking
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
