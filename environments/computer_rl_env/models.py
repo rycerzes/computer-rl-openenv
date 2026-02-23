@@ -78,7 +78,8 @@ class ComputerObservation(Observation):
     screenshot_base64: str
     screenshot_resolution: tuple[int, int] = (1280, 960)
     accessibility_tree: Optional[str] = None
-    accessibility_tree_format: Literal["flat", "tree"] = "flat"
+    accessibility_tree_format: Literal["flat", "tree", "xml"] = "tree"
+    accessibility_tree_xml: Optional[str] = None
     terminal_output: Optional[str] = None
     terminal_exit_code: Optional[int] = None
     active_window: Optional[str] = None

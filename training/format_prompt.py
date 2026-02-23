@@ -34,7 +34,7 @@ def format_observation_prompt(
     obs: "ComputerObservation",
     use_vision: bool = False,
     action_history: list[str] | None = None,
-    max_tree_chars: int = 4000,
+    max_tree_chars: int = 8000,
 ) -> str | tuple[str, "Image.Image"]:
     """Format observation into model prompt.
 

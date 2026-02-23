@@ -40,7 +40,7 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         pyautogui.FAILSAFE = False  # type: ignore
 
         self.screen_capture = ScreenCapture(display=display)
-        self.accessibility_parser = AccessibilityParser()
+        self.accessibility_parser = AccessibilityParser(max_depth=50, max_width=1024)
 
         reward_config = reward_config or {
             "mode": "sparse",
@@ -81,11 +81,13 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
 
         screenshot = self.screen_capture.capture()
         acc_tree = self.accessibility_parser.parse()
+        acc_tree_xml = self.accessibility_parser.parse_xml()
         active_info = self.accessibility_parser.get_active_window() or {}
 
         obs = ComputerObservation(
             screenshot_base64=screenshot,
             accessibility_tree=acc_tree,
+            accessibility_tree_xml=acc_tree_xml,
             instruction=self.current_task.instruction if self.current_task else None,
             active_window=active_info.get("active_window"),
             active_app=active_info.get("active_app"),
@@ -147,6 +149,7 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
 
         screenshot = self.screen_capture.capture()
         acc_tree = self.accessibility_parser.parse()
+        acc_tree_xml = self.accessibility_parser.parse_xml()
         active_info = self.accessibility_parser.get_active_window() or {}
 
         done = False
@@ -157,6 +160,7 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         curr_obs = ComputerObservation(
             screenshot_base64=screenshot,
             accessibility_tree=acc_tree,
+            accessibility_tree_xml=acc_tree_xml,
             instruction=self.current_task.instruction if self.current_task else None,
             active_window=active_info.get("active_window"),
             active_app=active_info.get("active_app"),

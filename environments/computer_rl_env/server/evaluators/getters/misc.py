@@ -133,17 +133,26 @@ if __name__ == "__main__":
 
 
 def get_accessibility_tree(env: Any, config: Dict[str, Any]) -> str:
-    """Get accessibility tree from VM using PyATSPI."""
+    """Get accessibility tree as XML from the environment.
 
+    Prefers the in-process ``AccessibilityParser.parse_xml()`` when available
+    (running inside the container).  Falls back to docker-exec script injection
+    for host-side evaluation.
+    """
+    # In-process path: use the parser directly (full parity, no HTTP overhead)
+    if hasattr(env, "accessibility_parser"):
+        try:
+            xml_str = env.accessibility_parser.parse_xml()
+            if xml_str:
+                return xml_str
+        except Exception as e:
+            logger.warning("In-process accessibility tree failed, trying docker exec: %s", e)
+
+    # Docker-exec fallback: inject ATSPI_SCRIPT into the container
     if hasattr(env, "docker_provider") and env.docker_provider:
-        # Write script to temp file and run it
         try:
             script_b64 = base64.b64encode(ATSPI_SCRIPT.encode()).decode()
-
-            # Setup command to decode script and run it using the environment's python
-            # We assume python3 is available in PATH
             cmd = f"bash -c 'echo {script_b64} | base64 -d > /tmp/get_atspi.py && /usr/bin/python3 /tmp/get_atspi.py'"
-
             output = env.docker_provider.execute(cmd)
 
             if "ERROR:" in output and not output.strip().startswith("<"):
