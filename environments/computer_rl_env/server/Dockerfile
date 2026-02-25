@@ -29,6 +29,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     wget \
     gnupg \
     software-properties-common \
+    gobject-introspection \
+    libgirepository1.0-dev \
+    libcairo2-dev \
+    pkg-config \
     python3-lxml \
     python3-pyatspi \
     at-spi2-core \

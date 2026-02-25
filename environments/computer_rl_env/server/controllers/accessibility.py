@@ -347,7 +347,10 @@ class AccessibilityParser:
         max_width: int = 1024,
         cache_ttl: float = 1.0,
     ):
-        self.backend = backend or self._detect_backend()
+        selected_backend = backend or "auto"
+        if selected_backend == "auto":
+            selected_backend = self._detect_backend()
+        self.backend = selected_backend
         self.max_depth = max_depth
         self.max_width = max_width
         self._cache: dict[str, tuple[object, float]] = {}
@@ -453,6 +456,7 @@ class AccessibilityParser:
 
         pyatspi = import_pyatspi()
         desktop = pyatspi.Registry.getDesktop(0)
+
         xml_root = lxml.etree.Element("desktop-frame", nsmap=NS_MAP)
 
         # Collect valid app nodes
