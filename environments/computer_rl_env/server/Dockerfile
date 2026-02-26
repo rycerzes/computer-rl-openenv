@@ -40,7 +40,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     scrot \
     x11-utils \
     dconf-cli \
-    xauth
+    xauth \
+    socat
 
 # Install Chrome for Testing (pinned, reproducible, no auto-update)
 # See https://developer.chrome.com/blog/chrome-for-testing
@@ -58,8 +59,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
        -o /tmp/chrome.zip \
     && unzip /tmp/chrome.zip -d /opt/chrome-for-testing \
     && ln -s /opt/chrome-for-testing/chrome-linux64/chrome /usr/local/bin/chrome \
-    && ln -s /usr/local/bin/chrome /usr/local/bin/google-chrome-stable \
-    && ln -s /usr/local/bin/chrome /usr/local/bin/google-chrome \
+    && printf '%s\n' '#!/bin/sh' 'exec /usr/local/bin/chrome --no-sandbox --disable-dev-shm-usage --user-data-dir=/root/chrome-profile "$@"' > /usr/local/bin/google-chrome \
+    && chmod +x /usr/local/bin/google-chrome \
+    && ln -s /usr/local/bin/google-chrome /usr/local/bin/google-chrome-stable \
     && rm /tmp/chrome.zip
 
 # Install VS Code

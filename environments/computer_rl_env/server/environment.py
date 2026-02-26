@@ -7,12 +7,12 @@ from typing import Optional
 import pyautogui
 from openenv.core import Environment
 
-from ..tasks.base import Task
 from ..models import (
     ComputerAction,
     ComputerObservation,
     ComputerState,
 )
+from ..tasks.base import Task
 from .controllers.accessibility import AccessibilityParser
 from .controllers.screenshot import ScreenCapture
 from .evaluators.base import TaskManager
@@ -77,7 +77,7 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
 
         if self.current_task:
             task_manager = TaskManager()
-            task_manager.setup(self.current_task)
+            task_manager.setup(self.current_task, env=self)
 
         screenshot = self.screen_capture.capture()
         acc_tree = self.accessibility_parser.parse()
