@@ -384,6 +384,34 @@ class AccessibilityParser:
 
         return lxml.etree.tostring(xml_root, encoding="unicode")
 
+    def get_terminal_output(self) -> str | None:
+        """Return text content of the focused terminal in the active terminal window.
+
+        Mirrors ComputerRL's terminal extraction semantics:
+        - active frame under gnome-terminal-server
+        - focused terminal descendant
+        """
+        try:
+            xml_root = self._get_cached_xml()
+            if xml_root is None:
+                xml_root = self._build_xml_tree()
+                self._set_cache(xml_root)
+
+            xpath = (
+                '//application[@name="gnome-terminal-server"]/frame[@st:active="true"]'
+                '//terminal[@st:focused="true"]'
+            )
+            terminals: list[lxml.etree._Element] = xml_root.xpath(xpath, namespaces=NS_MAP)
+            if len(terminals) != 1:
+                return None
+
+            text = terminals[0].text
+            if text is None:
+                return None
+            return text.rstrip()
+        except Exception:
+            return None
+
     def get_active_window(self) -> dict | None:
         """Get active window class and title using xdotool / xprop."""
         if not self._check_x11_tools():

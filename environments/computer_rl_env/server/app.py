@@ -10,6 +10,7 @@ from openenv.core import create_app as openenv_create_app
 from pydantic import BaseModel
 
 from ..models import ComputerAction, ComputerObservation
+from .controllers.accessibility import AccessibilityParser
 from .controllers.screenshot import ScreenCapture
 from .environment import ComputerEnvironment
 
@@ -69,6 +70,15 @@ def create_app():
             b64_str = capture.capture()
             img_bytes = base64.b64decode(b64_str)
             return Response(content=img_bytes, media_type="image/png")
+        except Exception as e:
+            return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+    @app.get("/terminal")
+    async def get_terminal_output():
+        try:
+            parser = AccessibilityParser(max_depth=50, max_width=1024)
+            output = parser.get_terminal_output()
+            return {"status": "success", "output": output, "exit_code": None}
         except Exception as e:
             return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 

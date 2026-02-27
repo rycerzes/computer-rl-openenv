@@ -82,12 +82,15 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         screenshot = self.screen_capture.capture()
         acc_tree = self.accessibility_parser.parse()
         acc_tree_xml = self.accessibility_parser.parse_xml()
+        terminal_output = self.accessibility_parser.get_terminal_output()
         active_info = self.accessibility_parser.get_active_window() or {}
 
         obs = ComputerObservation(
             screenshot_base64=screenshot,
             accessibility_tree=acc_tree,
             accessibility_tree_xml=acc_tree_xml,
+            terminal_output=terminal_output,
+            terminal_exit_code=None,
             instruction=self.current_task.instruction if self.current_task else None,
             active_window=active_info.get("active_window"),
             active_app=active_info.get("active_app"),
@@ -150,6 +153,7 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         screenshot = self.screen_capture.capture()
         acc_tree = self.accessibility_parser.parse()
         acc_tree_xml = self.accessibility_parser.parse_xml()
+        terminal_output = self.accessibility_parser.get_terminal_output()
         active_info = self.accessibility_parser.get_active_window() or {}
 
         done = False
@@ -161,6 +165,8 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
             screenshot_base64=screenshot,
             accessibility_tree=acc_tree,
             accessibility_tree_xml=acc_tree_xml,
+            terminal_output=terminal_output,
+            terminal_exit_code=None,
             instruction=self.current_task.instruction if self.current_task else None,
             active_window=active_info.get("active_window"),
             active_app=active_info.get("active_app"),

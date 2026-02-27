@@ -97,6 +97,25 @@ def get_vm_command_error(env: Any, config: Dict[str, Any]) -> str:
 def get_vm_terminal_output(env: Any, config: Dict[str, Any]) -> str:
     """Get terminal output from VM.
 
-    Similar to get_vm_command_line but may access stored terminal history.
+    Prefer live terminal text extracted from accessibility tree.
+    Falls back to latest observation and finally command output for compatibility.
     """
+    try:
+        parser = getattr(env, "accessibility_parser", None)
+        if parser and hasattr(parser, "get_terminal_output"):
+            output = parser.get_terminal_output()
+            if output is not None:
+                return output
+    except Exception:
+        pass
+
+    try:
+        prev_obs = getattr(env, "prev_observation", None)
+        if prev_obs is not None:
+            output = getattr(prev_obs, "terminal_output", None)
+            if output is not None:
+                return output
+    except Exception:
+        pass
+
     return get_vm_command_line(env, config)
