@@ -1,5 +1,6 @@
 import logging
 import os
+import shlex
 import socket
 import time
 
@@ -134,6 +135,14 @@ class DockerProvider:
     ) -> str:
         if self.container:
             try:
+                if timeout is not None and timeout > 0 and not background:
+                    if shell:
+                        cmd = f"timeout {int(timeout)}s {cmd}"
+                    else:
+                        if isinstance(cmd, str):
+                            cmd = shlex.split(cmd)
+                        cmd = ["timeout", f"{int(timeout)}s", *cmd]
+
                 if shell:
                     cmd = ["/bin/bash", "-c", cmd]
 

@@ -251,7 +251,14 @@ class TaskManager:
             return {"returncode": 0, "stdout": out, "stderr": ""}
 
         if background:
-            subprocess.Popen(command, shell=shell, start_new_session=True)
+            subprocess.Popen(
+                command,
+                shell=shell,
+                start_new_session=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             return {"returncode": 0, "stdout": "", "stderr": ""}
 
         proc = subprocess.run(
@@ -340,34 +347,82 @@ class TaskManager:
     def _execute_with_verification_setup(self, params: dict, env=None) -> None:
         command = params.get("command", [])
         verification = params.get("verification") or {}
+        verification_mode = str(params.get("verification_mode", "all")).strip().lower()
+        if verification_mode not in {"all", "any"}:
+            verification_mode = "all"
         max_wait_time = int(params.get("max_wait_time", 10))
         check_interval = float(params.get("check_interval", 1.0))
+        per_check_timeout = float(params.get("per_check_timeout", 2.0))
         shell = bool(params.get("shell", False))
+        background = bool(params.get("background", False))
+
+        command = self._replace_template_vars(command, env=env)
 
         if command:
-            self._run_command(command, env=env, shell=shell)
+            self._run_command(command, env=env, shell=shell, background=background)
 
         if not verification:
             return
 
+        window_exists = verification.get("window_exists")
+        window_name = ""
+        window_strict = False
+        window_by_class = False
+        if isinstance(window_exists, str):
+            window_name = window_exists
+        elif isinstance(window_exists, dict):
+            window_name = str(window_exists.get("window_name", "")).strip()
+            window_strict = bool(window_exists.get("strict", False))
+            window_by_class = bool(window_exists.get("by_class", False))
+
+        command_success = verification.get("command_success")
+        if command_success:
+            command_success = self._replace_template_vars(command_success, env=env)
+
         start = time.time()
         while time.time() - start <= max_wait_time:
-            ok = True
+            checks: list[bool] = []
 
-            window_name = verification.get("window_exists")
             if window_name:
-                result = self._run_command(
-                    ["xdotool", "search", "--name", str(window_name)],
-                    env=env,
-                )
-                ok = ok and result["returncode"] == 0
+                selector = "--class" if window_by_class else "--name"
+                pattern = f"^{re.escape(window_name)}$" if window_strict else window_name
+                try:
+                    result = self._run_command(
+                        ["xdotool", "search", selector, pattern],
+                        env=env,
+                        timeout=per_check_timeout,
+                    )
+                    matched = result["returncode"] == 0
+                    if not matched and window_by_class:
+                        fallback = self._run_command(
+                            ["xdotool", "search", "--name", pattern],
+                            env=env,
+                            timeout=per_check_timeout,
+                        )
+                        matched = fallback["returncode"] == 0
+                    checks.append(matched)
+                except Exception:
+                    checks.append(False)
 
-            command_success = verification.get("command_success")
             if command_success:
-                result = self._run_command(
-                    command_success, env=env, shell=isinstance(command_success, str)
-                )
-                ok = ok and result["returncode"] == 0
+                try:
+                    result = self._run_command(
+                        command_success,
+                        env=env,
+                        shell=isinstance(command_success, str),
+                        timeout=per_check_timeout,
+                    )
+                    checks.append(result["returncode"] == 0)
+                except Exception:
+                    checks.append(False)
+
+            if checks:
+                if verification_mode == "any":
+                    ok = any(checks)
+                else:
+                    ok = all(checks)
+            else:
+                ok = True
 
             if ok:
                 return
@@ -408,6 +463,33 @@ class TaskManager:
         if not path:
             return
         resolved = self._resolve_path(path)
+
+        wait_for_window = params.get("window_name") or params.get("wait_for_window")
+        if wait_for_window:
+            wait_target = str(wait_for_window).strip()
+            verification = {
+                "window_exists": {
+                    "window_name": wait_target,
+                    "strict": bool(params.get("strict", False)),
+                    "by_class": bool(params.get("by_class", False)),
+                },
+                "command_success": ["pgrep", "-f", wait_target],
+            }
+            self._execute_with_verification_setup(
+                {
+                    "command": ["xdg-open", str(resolved)],
+                    "verification": verification,
+                    "verification_mode": "any",
+                    "max_wait_time": params.get("max_wait_time", 10),
+                    "check_interval": params.get("check_interval", 1.0),
+                    "per_check_timeout": params.get("per_check_timeout", 2.0),
+                    "shell": False,
+                    "background": True,
+                },
+                env=env,
+            )
+            return
+
         self._run_command(["xdg-open", str(resolved)], env=env, background=True)
 
     def _download_setup(self, params: dict, env=None) -> None:
