@@ -77,7 +77,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --all-packages --dev --no-install-workspace
 
 ENV PATH="/opt/testenv/.venv/bin:$PATH"
-ENV PYTHONPATH="/workspace:/workspace/environments/computer_rl_env"
+ENV PYTHONPATH="/workspace:/workspace/environments"
 
 RUN mkdir -p /workspace /var/log/supervisor /run/dbus /var/run/dbus
 
@@ -142,7 +142,7 @@ startsecs=3
 
 [program:app]
 command=uvicorn computer_rl_env.server.app:create_app --host 0.0.0.0 --port 8000 --factory
-environment=DISPLAY=":99",PYTHONPATH="/workspace:/workspace/environments/computer_rl_env"
+environment=DISPLAY=":99",PYTHONPATH="/workspace:/workspace/environments"
 directory=/workspace
 autorestart=true
 priority=30
@@ -169,6 +169,9 @@ if [ -S /dev/shm/dbus_session_socket ]; then
     rm -f /dev/shm/dbus_session_socket
 fi
 dbus-daemon --session --fork --address="$DBUS_SESSION_BUS_ADDRESS"
+
+cd /workspace
+uv sync --frozen --all-packages --dev
 
 exec /usr/bin/supervisord -c /etc/supervisord-test.conf
 EOF
