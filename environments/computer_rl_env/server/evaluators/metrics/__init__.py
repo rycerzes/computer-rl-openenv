@@ -375,4 +375,19 @@ def evaluate_metric(name: str, **kwargs) -> float:
     func = METRIC_REGISTRY.get(name)
     if func is None:
         raise ValueError(f"Unknown metric: {name}")
-    return float(func(**kwargs))
+
+    # OpenEnv callers pass `result=` / `expected=` as keyword args, while many
+    # metric implementations (ported from ComputerRL) expect positional args
+    # with heterogeneous parameter names (e.g. rules, actual, file1, ...).
+    # Adapt to the ComputerRL calling convention: (result, expected, **options).
+    sentinel = object()
+    result = kwargs.pop("result", sentinel)
+    expected = kwargs.pop("expected", sentinel)
+
+    args = []
+    if result is not sentinel:
+        args.append(result)
+    if expected is not sentinel:
+        args.append(expected)
+
+    return float(func(*args, **kwargs))
