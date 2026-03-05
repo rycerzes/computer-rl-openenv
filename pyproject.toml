@@ -10,7 +10,7 @@ description = "Computer use RL agent for desktop GUI automation"
 dependencies = ["computer-rl-env"]
 
 [tool.uv.workspace]
-members = ["environments/computer_rl_env", "training"]
+members = ["environments/computer_rl_env"]
 
 [tool.uv]
 environments = ["sys_platform == 'linux'"]

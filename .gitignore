@@ -18,9 +18,17 @@ scripts/
 .vscode/
 *nul*
 *.png
+*.mp4
 
 OSWorld/
 openenv/
 AgentRL/
 ComputerRL/
+cua/
+
+models/
+outputs/
+unsloth_compiled_cache/
+
+*.ipynb
 # We spend all our lives building walls, in order to keep us safe. But the walls do not work when the enemy is within
