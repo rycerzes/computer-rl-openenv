@@ -8,12 +8,25 @@ import pyautogui
 from openenv.core import Environment
 
 from ..models import (
+    Click,
     ComputerAction,
     ComputerObservation,
     ComputerState,
+    Done,
+    Drag,
+    Fail,
+    HotKey,
+    MouseMove,
+    PressKey,
+    Scroll,
+    StructuredComputerAction,
+    TypeText,
+    Wait,
 )
 from ..tasks.base import Task
 from .controllers.accessibility import AccessibilityParser
+from .controllers.keyboard import KeyboardController
+from .controllers.mouse import MouseController
 from .controllers.screenshot import ScreenCapture
 from .evaluators.base import TaskManager
 from .rewards import RewardComputer
@@ -41,6 +54,8 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
 
         self.screen_capture = ScreenCapture(display=display)
         self.accessibility_parser = AccessibilityParser(max_depth=50, max_width=1024)
+        self.keyboard_controller = KeyboardController(display=display)
+        self.mouse_controller = MouseController(display=display)
 
         reward_config = reward_config or {
             "mode": "sparse",
@@ -130,6 +145,43 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
 
         return "action"
 
+    def _execute_structured_action(self, action: StructuredComputerAction) -> str:
+        if isinstance(action, MouseMove):
+            self.mouse_controller.move(action.x, action.y)
+            return "action"
+        if isinstance(action, Click):
+            self.mouse_controller.click(action.x, action.y, action.button, action.num_clicks)
+            return "action"
+        if isinstance(action, TypeText):
+            self.keyboard_controller.type_text(action.text)
+            return "action"
+        if isinstance(action, PressKey):
+            self.keyboard_controller.press_key(action.key)
+            return "action"
+        if isinstance(action, HotKey):
+            self.keyboard_controller.press_hotkey(*action.keys)
+            return "action"
+        if isinstance(action, Scroll):
+            self.mouse_controller.scroll(action.x, action.y, action.direction, action.amount)
+            return "action"
+        if isinstance(action, Drag):
+            self.mouse_controller.drag(action.x1, action.y1, action.x2, action.y2)
+            return "action"
+        if isinstance(action, Wait):
+            time.sleep(action.seconds)
+            return "wait"
+        if isinstance(action, Done):
+            return "done"
+        if isinstance(action, Fail):
+            return "fail"
+        logger.warning(f"Unsupported structured action: {action}")
+        return "action"
+
+    def _execute_action(self, action_payload: str | StructuredComputerAction) -> str:
+        if isinstance(action_payload, str):
+            return self._execute_pyautogui_action(action_payload)
+        return self._execute_structured_action(action_payload)
+
     def _evaluate_task_success(self, last_action: Optional[str] = None) -> bool:
         if not self.current_task:
             return False
@@ -145,8 +197,7 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
     ) -> ComputerObservation:
         self.step_count += 1
 
-        # Execute the pyautogui action string
-        action_category = self._execute_pyautogui_action(action.action)
+        action_category = self._execute_action(action.action)
 
         time.sleep(0.5)
 

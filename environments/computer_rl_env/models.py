@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
 from openenv.core import Action, Observation, State
 from pydantic import BaseModel, Field
@@ -51,7 +51,7 @@ class Drag(BaseModel):
 
 class Wait(BaseModel):
     action_type: Literal["wait"] = "wait"
-    seconds: float = Field(ge=0, le=10)
+    seconds: float = Field(ge=0, le=10, default=1.0)
 
 
 class Done(BaseModel):
@@ -62,15 +62,34 @@ class Fail(BaseModel):
     action_type: Literal["fail"] = "fail"
 
 
+StructuredComputerAction = Annotated[
+    MouseMove
+    | Click
+    | TypeText
+    | PressKey
+    | HotKey
+    | Scroll
+    | Drag
+    | Wait
+    | Done
+    | Fail,
+    Field(discriminator="action_type"),
+]
+
+
 class ComputerAction(Action):
     """Action for the Computer Environment.
 
     Accepts a pyautogui-style Python string (e.g. 'pyautogui.click(x=500, y=300)')
     or a sentinel string: 'WAIT', 'DONE', 'FAIL'.
+    Also accepts typed structured action objects.
     """
 
-    action: str = Field(
-        description="PyAutoGUI-style Python string or sentinel: 'WAIT', 'DONE', 'FAIL'."
+    action: str | StructuredComputerAction = Field(
+        description=(
+            "PyAutoGUI-style Python string/sentinel ('WAIT','DONE','FAIL') "
+            "or typed action object with action_type discriminator."
+        )
     )
 
 
