@@ -5,12 +5,13 @@ import shlex
 import subprocess
 from typing import List, Optional
 
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from openenv.core import create_app as openenv_create_app
 from pydantic import BaseModel
 
 from ..models import ComputerAction, ComputerObservation
 from .controllers.accessibility import AccessibilityParser
+from .controllers.recording import ScreenRecorder
 from .controllers.screenshot import ScreenCapture
 from .environment import ComputerEnvironment
 
@@ -44,6 +45,7 @@ def create_app():
         action_cls=ComputerAction,
         observation_cls=ComputerObservation,
     )
+    recorder = ScreenRecorder(display=":99")
 
     @app.post("/setup/launch")
     async def launch_app(request: LaunchRequest):
@@ -81,6 +83,34 @@ def create_app():
             return {"status": "success", "output": output, "exit_code": None}
         except Exception as e:
             return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+    @app.post("/start_recording")
+    async def start_recording():
+        try:
+            recorder.start()
+            return {"status": "success", "message": "Started recording successfully."}
+        except ValueError as e:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
+        except Exception as e:
+            return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+    @app.post("/end_recording")
+    async def end_recording():
+        try:
+            recording_path = recorder.stop()
+            return FileResponse(
+                path=recording_path,
+                media_type="video/mp4",
+                filename=os.path.basename(recording_path),
+            )
+        except ValueError as e:
+            return JSONResponse(status_code=400, content={"status": "error", "message": str(e)})
+        except Exception as e:
+            return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+    @app.on_event("shutdown")
+    async def _shutdown_cleanup() -> None:
+        recorder.cleanup()
 
     return app
 
