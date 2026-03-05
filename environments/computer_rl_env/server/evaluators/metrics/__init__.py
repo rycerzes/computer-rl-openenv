@@ -1,8 +1,10 @@
 from .app_launched import evaluate_app_launched
 from .basic_os import (
     check_favorite_app,
+    check_gnome_favorite_apps,
     check_file_movement,
     check_gnome_text_scaling_factor,
+    check_moved_jpgs,
     check_utc_time,
     is_in_vm_clickboard,
 )
@@ -179,9 +181,11 @@ METRIC_REGISTRY = {
     "evaluate_app_launched": evaluate_app_launched,
     # Basic OS
     "check_favorite_app": check_favorite_app,
+    "check_gnome_favorite_apps": check_gnome_favorite_apps,
     "check_utc_time": check_utc_time,
     "check_gnome_text_scaling_factor": check_gnome_text_scaling_factor,
     "check_file_movement": check_file_movement,
+    "check_moved_jpgs": check_moved_jpgs,
     "is_in_vm_clickboard": is_in_vm_clickboard,
     # Docs
     "compare_docx_files": compare_docx_files,

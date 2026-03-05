@@ -1,3 +1,4 @@
+import ast
 import logging
 
 logger = logging.getLogger("computer_rl_env.server.evaluators.metrics.basic_os")
@@ -14,6 +15,26 @@ def check_favorite_app(actual_favorites, rule):
         if app not in actual_apps_clean:
             return 0.0
     return 1.0
+
+
+def check_gnome_favorite_apps(result, expected):
+    expected_apps = expected.get("expected", expected) if isinstance(expected, dict) else expected
+    if not isinstance(expected_apps, list):
+        return 0.0
+
+    apps = result
+    if isinstance(result, str):
+        try:
+            apps = ast.literal_eval(result)
+        except (ValueError, SyntaxError):
+            return 0.0
+
+    if not isinstance(apps, list):
+        return 0.0
+
+    if len(apps) != len(expected_apps):
+        return 0.0
+    return 1.0 if set(apps) == set(expected_apps) else 0.0
 
 
 def check_utc_time(actual_time_output, rule):
@@ -42,6 +63,29 @@ def check_file_movement(file_list_output, rule):
     if expected_file in file_list_output:
         return 1.0
     return 0.0
+
+
+def check_moved_jpgs(result, expected):
+    expected_jpgs = expected.get("expected", expected) if isinstance(expected, dict) else expected
+    if not isinstance(expected_jpgs, list):
+        return 0.0
+
+    if not isinstance(result, dict):
+        return 0.0
+
+    children = result.get("children", [])
+    if not isinstance(children, list):
+        return 0.0
+
+    moved_jpgs = [
+        node.get("name")
+        for node in children
+        if isinstance(node, dict) and node.get("type") == "file" and isinstance(node.get("name"), str)
+    ]
+
+    if len(moved_jpgs) != len(expected_jpgs):
+        return 0.0
+    return 1.0 if set(moved_jpgs) == set(expected_jpgs) else 0.0
 
 
 def is_in_vm_clickboard(expected, result):
