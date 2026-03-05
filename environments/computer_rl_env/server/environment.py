@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import time
 import uuid
 from typing import Optional
@@ -35,6 +36,46 @@ logger = logging.getLogger(__name__)
 
 # Sentinel action strings (case-insensitive matching)
 _SENTINEL_ACTIONS = {"WAIT", "DONE", "FAIL"}
+
+
+def _fix_pyautogui_less_than_bug(command: str) -> str:
+    press_pattern = r'pyautogui\.press\(["\'](?:<|\\u003c)["\']\)'
+
+    def replace_press_less_than(match):
+        return 'pyautogui.hotkey("shift", ",")'
+
+    command = re.sub(press_pattern, replace_press_less_than, command)
+
+    typewrite_pattern = r'pyautogui\.typewrite\((["\'])(.*?)\1\)'
+
+    def process_typewrite_match(match):
+        quote_char = match.group(1)
+        content = match.group(2)
+
+        try:
+            content = content.encode("utf-8").decode("unicode_escape")
+        except UnicodeDecodeError:
+            pass
+
+        if "<" not in content:
+            return match.group(0)
+
+        parts = content.split("<")
+        result_parts = []
+
+        for idx, part in enumerate(parts):
+            if idx == 0:
+                if part:
+                    result_parts.append(f"pyautogui.typewrite({quote_char}{part}{quote_char})")
+            else:
+                result_parts.append('pyautogui.hotkey("shift", ",")')
+                if part:
+                    result_parts.append(f"pyautogui.typewrite({quote_char}{part}{quote_char})")
+
+        return "; ".join(result_parts)
+
+    command = re.sub(typewrite_pattern, process_typewrite_match, command)
+    return command
 
 
 class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, ComputerState]):
@@ -135,6 +176,8 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
             return "done"
         if upper == "FAIL":
             return "fail"
+
+        action_str = _fix_pyautogui_less_than_bug(action_str)
 
         # Execute pyautogui string in sandboxed namespace
         namespace = {"pyautogui": pyautogui, "time": time}
