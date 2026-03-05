@@ -32,7 +32,9 @@ def is_expected_active_tab(active_tab_info: Dict[str, str], rule: Dict[str, Any]
     if match_type == "url":
         expected_url = rule["url"]
         actual_url = (
-            active_tab_info.get("url", None) if isinstance(active_tab_info, dict) else active_tab_info
+            active_tab_info.get("url", None)
+            if isinstance(active_tab_info, dict)
+            else active_tab_info
         )
         logger.info("expected_url: %s", expected_url)
         logger.info("actual_url: %s", actual_url)
@@ -55,7 +57,9 @@ def is_expected_active_tab_approximate(
 
         expected_url = rule["url"]
         actual_url = (
-            active_tab_info.get("url", None) if isinstance(active_tab_info, dict) else active_tab_info
+            active_tab_info.get("url", None)
+            if isinstance(active_tab_info, dict)
+            else active_tab_info
         )
 
         def strip_query(url):
@@ -120,18 +124,12 @@ def is_expected_bookmarks(bookmarks, rule: Dict[str, Any]) -> float:
 
     if rule["type"] == "bookmark_bar_folders_names":
         folder_names = [
-            bm["name"]
-            for bm in bookmarks["bookmark_bar"]["children"]
-            if bm["type"] == "folder"
+            bm["name"] for bm in bookmarks["bookmark_bar"]["children"] if bm["type"] == "folder"
         ]
         return 1.0 if set(folder_names) == set(rule["names"]) else 0.0
 
     elif rule["type"] == "bookmark_bar_websites_urls":
-        urls = [
-            bm["url"]
-            for bm in bookmarks["bookmark_bar"]["children"]
-            if bm["type"] == "url"
-        ]
+        urls = [bm["url"] for bm in bookmarks["bookmark_bar"]["children"] if bm["type"] == "url"]
         return 1.0 if set(urls) == set(rule["urls"]) else 0.0
 
     elif rule["type"] == "liked_authors_websites_urls":
@@ -145,9 +143,7 @@ def is_expected_bookmarks(bookmarks, rule: Dict[str, Any]) -> float:
         )
         if not liked_folder:
             return 0.0
-        liked_urls = [
-            bm["url"] for bm in liked_folder["children"] if bm["type"] == "url"
-        ]
+        liked_urls = [bm["url"] for bm in liked_folder["children"] if bm["type"] == "url"]
         urls = rule["urls"]
         for idx, url in enumerate(urls):
             if isinstance(url, str):
@@ -171,9 +167,7 @@ def is_expected_search_query(active_tab_info: Dict[str, str], rules: Dict[str, A
     return 1.0 if re.search(pattern, active_tab_info["url"]) else 0.0
 
 
-def compare_pdfs(
-    pdf1_path: Union[str, List[str]], pdf2_path: Union[str, List[str]]
-) -> float:
+def compare_pdfs(pdf1_path: Union[str, List[str]], pdf2_path: Union[str, List[str]]) -> float:
     """Compare two PDF files by text content using fuzzy matching."""
     if not isinstance(pdf2_path, list):
         pdf1_path, pdf2_path = [pdf1_path], [pdf2_path]
@@ -286,27 +280,35 @@ def compare_archive(pred_path: str, gold_path: str, **kwargs) -> float:
         # Lazy imports for cross-module references
         if file_type == "text":
             from .vscode import compare_text_file
+
             return compare_text_file
         elif file_type == "docx":
             from .docs import compare_docx_files
+
             return compare_docx_files
         elif file_type == "ppt":
             from .slides import compare_pptx_files
+
             return compare_pptx_files
         elif file_type == "image":
             from .vlc import compare_images
+
             return compare_images
         elif file_type == "csv":
             from .table import compare_csv
+
             return compare_csv
         elif file_type == "table":
             from .table import compare_table
+
             return compare_table
         elif file_type == "audio":
             from .vlc import compare_audios
+
             return compare_audios
         elif file_type == "video":
             from .vlc import compare_videos
+
             return compare_videos
         else:
             raise ValueError(f"Unsupported file type: {file_type}")

@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import sqlite3
 import subprocess
@@ -11,7 +12,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-import shlex
 import requests
 
 from ...tasks.base import Task

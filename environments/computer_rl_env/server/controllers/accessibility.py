@@ -534,7 +534,7 @@ class AccessibilityParser:
                     parts = line.split(maxsplit=4)
                     if len(parts) >= 5:
                         title = parts[4]
-                        win_elem = lxml.etree.SubElement(
+                        lxml.etree.SubElement(
                             xml_root,
                             "frame",
                             attrib={"name": title, "window_id": parts[0]},

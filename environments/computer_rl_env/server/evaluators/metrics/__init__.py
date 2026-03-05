@@ -1,8 +1,8 @@
 from .app_launched import evaluate_app_launched
 from .basic_os import (
     check_favorite_app,
-    check_gnome_favorite_apps,
     check_file_movement,
+    check_gnome_favorite_apps,
     check_gnome_text_scaling_factor,
     check_moved_jpgs,
     check_utc_time,

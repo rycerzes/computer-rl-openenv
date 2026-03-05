@@ -63,16 +63,7 @@ class Fail(BaseModel):
 
 
 StructuredComputerAction = Annotated[
-    MouseMove
-    | Click
-    | TypeText
-    | PressKey
-    | HotKey
-    | Scroll
-    | Drag
-    | Wait
-    | Done
-    | Fail,
+    MouseMove | Click | TypeText | PressKey | HotKey | Scroll | Drag | Wait | Done | Fail,
     Field(discriminator="action_type"),
 ]
 

@@ -80,7 +80,9 @@ def check_moved_jpgs(result, expected):
     moved_jpgs = [
         node.get("name")
         for node in children
-        if isinstance(node, dict) and node.get("type") == "file" and isinstance(node.get("name"), str)
+        if isinstance(node, dict)
+        and node.get("type") == "file"
+        and isinstance(node.get("name"), str)
     ]
 
     if len(moved_jpgs) != len(expected_jpgs):

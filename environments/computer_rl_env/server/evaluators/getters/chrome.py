@@ -601,7 +601,7 @@ def get_open_tabs_info(env: Any, config: Dict[str, Any]) -> List[dict]:
     return []
 
 
-def get_active_url_from_accessTree(env: Any, config: Dict[str, Any]) -> Optional[str]:
+def get_active_url_from_access_tree(env: Any, config: Dict[str, Any]) -> Optional[str]:
     """Get the active tab URL from the accessibility tree (Chrome address bar)."""
     tree_xml = _get_accessibility_tree_xml()
     if tree_xml is None:
@@ -635,7 +635,7 @@ def get_active_tab_info(env: Any, config: Dict[str, Any]) -> Optional[dict]:
     """Get full info about the active tab (navigates to the URL found in address bar)."""
     from playwright.sync_api import sync_playwright
 
-    active_tab_url = get_active_url_from_accessTree(env, config)
+    active_tab_url = get_active_url_from_access_tree(env, config)
     if active_tab_url is None:
         logger.error("Failed to get active tab URL")
         return None
@@ -766,7 +766,7 @@ def get_active_tab_html_parse(env: Any, config: Dict[str, Any]) -> dict:
     """
     from playwright.sync_api import sync_playwright
 
-    active_tab_url = get_active_url_from_accessTree(env, config)
+    active_tab_url = get_active_url_from_access_tree(env, config)
     if not isinstance(active_tab_url, str):
         logger.error(f"active_tab_url is not a string: {type(active_tab_url)}")
         return {}
@@ -965,7 +965,7 @@ def _extract_from_page(page, config: Dict[str, Any]) -> dict:
 
 def get_active_tab_url_parse(env: Any, config: Dict[str, Any]) -> Optional[dict]:
     """Parse query parameters from the active tab URL."""
-    active_tab_url = get_active_url_from_accessTree(env, config)
+    active_tab_url = get_active_url_from_access_tree(env, config)
     if active_tab_url is None:
         return None
 
@@ -985,9 +985,9 @@ def get_active_tab_url_parse(env: Any, config: Dict[str, Any]) -> Optional[dict]
     return extracted
 
 
-def get_url_dashPart(env: Any, config: Dict[str, Any]) -> Optional[Any]:
+def get_url_dash_part(env: Any, config: Dict[str, Any]) -> Optional[Any]:
     """Extract a dash-separated part of the active tab URL."""
-    active_tab_url = get_active_url_from_accessTree(env, config)
+    active_tab_url = get_active_url_from_access_tree(env, config)
     if active_tab_url is None:
         return None
 
@@ -1013,7 +1013,7 @@ def get_url_dashPart(env: Any, config: Dict[str, Any]) -> Optional[Any]:
     return dash_part
 
 
-def get_gotoRecreationPage_and_get_html_content(env: Any, config: Dict[str, Any]) -> dict:
+def get_goto_recreation_page_and_get_html_content(env: Any, config: Dict[str, Any]) -> dict:
     """Navigate recreation.gov, perform search and extract content.
 
     This is a highly specific getter for recreation.gov evaluation tasks.
@@ -1112,7 +1112,7 @@ def get_gotoRecreationPage_and_get_html_content(env: Any, config: Dict[str, Any]
 
 def get_macys_product_url_parse(env: Any, config: Dict[str, Any]) -> Optional[dict]:
     """Parse Macy's product URL path for evaluation."""
-    active_tab_url = get_active_url_from_accessTree(env, config)
+    active_tab_url = get_active_url_from_access_tree(env, config)
     if active_tab_url is None:
         return None
 
