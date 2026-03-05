@@ -21,6 +21,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     thunderbird \
     wmctrl \
     xdotool \
+    x11vnc \
     supervisor \
     dbus \
     dbus-x11 \
@@ -111,6 +112,13 @@ autorestart=true
 priority=20
 startsecs=5
 
+[program:x11vnc]
+command=x11vnc -display :99 -forever -shared -nopw -listen 0.0.0.0 -rfbport 5900 -xkb
+environment=DISPLAY=":99"
+autorestart=true
+priority=22
+startsecs=3
+
 [program:chrome]
 command=chrome
     --no-sandbox
@@ -158,6 +166,7 @@ set -euo pipefail
 
 export DISPLAY="${DISPLAY:-:99}"
 mkdir -p /run/dbus /var/log/supervisor /var/run/dbus
+touch /root/.Xauthority
 
 if [ -f /var/run/dbus/pid ]; then
     rm -f /var/run/dbus/pid
@@ -182,5 +191,6 @@ WORKDIR /workspace
 
 EXPOSE 8000
 EXPOSE 1337
+EXPOSE 5900
 
 CMD ["/bin/bash"]

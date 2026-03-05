@@ -22,6 +22,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     thunderbird \
     wmctrl \
     xdotool \
+    x11vnc \
     supervisor \
     dbus \
     dbus-x11 \
@@ -98,6 +99,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
 EXPOSE 1337
+EXPOSE 5900
 
 COPY environments/computer_rl_env/server/start.sh /usr/local/bin/
 RUN dos2unix /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh

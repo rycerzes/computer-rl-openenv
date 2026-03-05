@@ -36,6 +36,7 @@ class DockerProvider:
         self.container = None
         self.port = None
         self.cdp_port = None  # Chrome DevTools Protocol port
+        self.vnc_port = None  # VNC port
 
     def _get_free_port(self) -> int:
         """Find a free port on localhost."""
@@ -43,12 +44,18 @@ class DockerProvider:
             s.bind(("", 0))
             return s.getsockname()[1]
 
-    def start(self, port: int | None = None, cdp_port: int | None = None) -> str:
+    def start(
+        self,
+        port: int | None = None,
+        cdp_port: int | None = None,
+        vnc_port: int | None = None,
+    ) -> str:
         """Start container and return base URL (http://localhost:port).
 
         Args:
             port: Port for the environment server (8000 inside container)
             cdp_port: Port for Chrome DevTools Protocol (1337 inside container)
+            vnc_port: Port for VNC access (5900 inside container)
         """
         if self.container:
             logger.warning("Container already running, stopping it first")
@@ -56,10 +63,15 @@ class DockerProvider:
 
         self.port = port or self._get_free_port()
         self.cdp_port = cdp_port or self._get_free_port()
+        self.vnc_port = vnc_port or self._get_free_port()
 
         try:
             logger.info(
-                f"Starting container from image {self.image_name} on port {self.port}, CDP port {self.cdp_port}"
+                "Starting container from image %s on port %s, CDP port %s, VNC port %s",
+                self.image_name,
+                self.port,
+                self.cdp_port,
+                self.vnc_port,
             )
             self.container = self.client.containers.run(
                 self.image_name,
@@ -68,6 +80,7 @@ class DockerProvider:
                 ports={
                     "8000/tcp": self.port,
                     "1337/tcp": self.cdp_port,  # Chrome DevTools Protocol
+                    "5900/tcp": self.vnc_port,  # VNC access
                 },
                 environment={"DISPLAY": ":99"},
                 cap_add=["SYS_ADMIN"],  # Often needed for GUI automation
@@ -97,6 +110,7 @@ class DockerProvider:
                 self.container = None
                 self.port = None
                 self.cdp_port = None
+                self.vnc_port = None
 
     def revert_to_snapshot(self, port: int | None = None) -> str:
         """Reset by stopping and starting fresh container (OSWorld style).
@@ -107,8 +121,9 @@ class DockerProvider:
         logger.info("Reverting to snapshot (restarting container)")
         saved_port = port or self.port
         saved_cdp_port = self.cdp_port
+        saved_vnc_port = self.vnc_port
         self.stop()
-        return self.start(port=saved_port, cdp_port=saved_cdp_port)
+        return self.start(port=saved_port, cdp_port=saved_cdp_port, vnc_port=saved_vnc_port)
 
     def _wait_for_ready(self, base_url: str, timeout: int = 60):
         """Wait for environment server to be healthy."""
