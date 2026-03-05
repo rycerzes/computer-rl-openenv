@@ -211,6 +211,8 @@ class ComputerEnvironment(Environment[ComputerAction, ComputerObservation, Compu
         if self.current_task:
             max_steps = self.current_task.max_steps
             done = self.step_count >= max_steps
+        if action_category in ("done", "fail"):
+            done = True
 
         curr_obs = ComputerObservation(
             screenshot_base64=screenshot,
