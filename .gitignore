@@ -14,7 +14,7 @@ evaluation_examples/
 docs/
 tests/
 tests/**/phase*/
-scripts/
+scripts/old-scripts/
 .vscode/
 *nul*
 *.png
