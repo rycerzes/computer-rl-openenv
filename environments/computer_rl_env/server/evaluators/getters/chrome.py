@@ -166,9 +166,7 @@ print(ET.tostring(root, encoding='unicode'))
         return None
 
 
-# ──────────────────────────────────────────────────────────────
 # FILE-BASED GETTERS  (read Chrome config files directly)
-# ──────────────────────────────────────────────────────────────
 
 
 def get_default_search_engine(env: Any, config: Dict[str, Any]) -> str:
@@ -318,12 +316,120 @@ def get_enable_do_not_track(env: Any, config: Dict[str, Any]) -> str:
     return "true" if data.get("enable_do_not_track", False) else "false"
 
 
+def get_enable_safe_browsing(env: Any, config: Dict[str, Any]) -> str:
+    """Check if Safe Browsing is enabled.
+
+    Some tasks use `enable_safe_browsing` while others use
+    `enable_enhanced_safety_browsing`. This getter checks standard safe browsing
+    first and falls back to enhanced mode for compatibility.
+    """
+    data = _read_json_file(_CHROME_PREFS)
+    if data is None:
+        return "false"
+
+    safebrowsing = data.get("safebrowsing", {})
+    if bool(safebrowsing.get("enabled", False)):
+        return "true"
+    return "true" if bool(safebrowsing.get("enhanced", False)) else "false"
+
+
 def get_enable_enhanced_safety_browsing(env: Any, config: Dict[str, Any]) -> str:
     """Check if Enhanced Safe Browsing is enabled."""
     data = _read_json_file(_CHROME_PREFS)
     if data is None:
         return "false"
     return "true" if data.get("safebrowsing", {}).get("enhanced", False) else "false"
+
+
+def get_googledrive_file(env: Any, config: Dict[str, Any]) -> Any:
+    """Download file(s) from Google Drive to local cache for metric comparison."""
+    try:
+        from pydrive2.auth import GoogleAuth
+        from pydrive2.drive import GoogleDrive
+    except Exception as exc:
+        logger.error(f"pydrive2 is required for googledrive_file getter: {exc}")
+        return None
+
+    settings_file = str(
+        config.get("settings_file", "evaluation_examples/settings/googledrive/settings.yml")
+    )
+    gauth = GoogleAuth(settings_file=settings_file)
+    drive = GoogleDrive(gauth)
+
+    cache_dir = str(getattr(env, "cache_dir", "/tmp/osworld_cache"))
+    os.makedirs(cache_dir, exist_ok=True)
+
+    def _download_single(query_chain: List[str], destination: str) -> str | None:
+        parent_id = "root"
+        current_file = None
+        try:
+            for query in query_chain:
+                search_query = f'( {query} ) and "{parent_id}" in parents'
+                file_list = drive.ListFile({"q": search_query}).GetList()
+                if not file_list:
+                    return None
+                current_file = file_list[0]
+                parent_id = current_file["id"]
+
+            if current_file is None:
+                return None
+
+            current_file.GetContentFile(destination, mimetype=current_file["mimeType"])
+            return destination
+        except Exception as exc:
+            logger.error(f"Failed to download from Google Drive: {exc}")
+            return None
+
+    def _path_to_query(path_segments: List[str]) -> List[str]:
+        queries: List[str] = []
+        for idx, segment in enumerate(path_segments):
+            if idx < len(path_segments) - 1:
+                queries.append(
+                    f"title = '{segment}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+                )
+            else:
+                queries.append(f"title = '{segment}' and trashed = false")
+        return queries
+
+    if "query" in config:
+        dest = os.path.join(cache_dir, str(config.get("dest", "googledrive_file")))
+        return _download_single(config["query"], dest)
+
+    if "path" in config:
+        path = config["path"]
+        if isinstance(path, str):
+            path = [segment for segment in path.split("/") if segment]
+        dest = os.path.join(
+            cache_dir, str(config.get("dest", path[-1] if path else "googledrive_file"))
+        )
+        return _download_single(_path_to_query(path), dest)
+
+    if "query_list" in config:
+        query_list = config["query_list"]
+        dest_list = config.get("dest", [])
+        if not isinstance(dest_list, list) or len(dest_list) != len(query_list):
+            raise ValueError("googledrive_file expects dest list matching query_list length")
+        return [
+            _download_single(query_chain, os.path.join(cache_dir, str(dest_list[idx])))
+            for idx, query_chain in enumerate(query_list)
+        ]
+
+    if "path_list" in config:
+        path_list = config["path_list"]
+        dest_list = config.get("dest", [])
+        if not isinstance(dest_list, list) or len(dest_list) != len(path_list):
+            raise ValueError("googledrive_file expects dest list matching path_list length")
+        results: List[str | None] = []
+        for idx, path in enumerate(path_list):
+            if isinstance(path, str):
+                path = [segment for segment in path.split("/") if segment]
+            results.append(
+                _download_single(_path_to_query(path), os.path.join(cache_dir, str(dest_list[idx])))
+            )
+        return results
+
+    logger.error("googledrive_file getter requires one of query/path/query_list/path_list")
+    return None
 
 
 def get_new_startup_page(env: Any, config: Dict[str, Any]) -> str:
@@ -369,9 +475,7 @@ def get_data_delete_automacally(env: Any, config: Dict[str, Any]) -> str:
     return "true" if state is not None else "false"
 
 
-# ──────────────────────────────────────────────────────────────
 # CDP-BASED GETTERS  (use Playwright to connect to Chrome)
-# ──────────────────────────────────────────────────────────────
 
 
 def get_info_from_website(env: Any, config: Dict[str, Any]) -> Any:

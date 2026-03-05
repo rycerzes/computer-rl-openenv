@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+import shlex
 import requests
 
 from ...tasks.base import Task
@@ -26,6 +27,14 @@ class TaskManager:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def setup(self, task: Task, env=None) -> bool:
+        if task.proxy:
+            proxy_params = {}
+            if isinstance(task.metadata, dict):
+                proxy_url = task.metadata.get("proxy_url")
+                if proxy_url:
+                    proxy_params["proxy_url"] = proxy_url
+            self._proxy_setup(proxy_params, env=env)
+
         steps = task.config
         for step in steps:
             self._execute_config_step(step, env=env)
@@ -241,6 +250,38 @@ class TaskManager:
         timeout: float | None = None,
     ) -> dict[str, Any]:
         if env is not None and hasattr(env, "docker_provider") and env.docker_provider:
+            container = getattr(env.docker_provider, "container", None)
+            if container is not None:
+                if isinstance(command, list):
+                    cmd_exec: list[str] = [str(part) for part in command]
+                    if shell:
+                        cmd_exec = [
+                            "/bin/bash",
+                            "-lc",
+                            " ".join(shlex.quote(part) for part in cmd_exec),
+                        ]
+                else:
+                    cmd_exec = ["/bin/bash", "-lc", command] if shell else shlex.split(command)
+
+                if timeout is not None and timeout > 0 and not background:
+                    cmd_exec = ["timeout", f"{int(timeout)}s", *cmd_exec]
+
+                try:
+                    result = container.exec_run(cmd_exec, detach=background)
+                except Exception as exc:
+                    logger.error(f"Container command execution failed: {exc}")
+                    return {"returncode": 1, "stdout": "", "stderr": str(exc)}
+
+                if background:
+                    return {"returncode": 0, "stdout": "", "stderr": ""}
+
+                output = result.output.decode("utf-8", errors="replace")
+                return {
+                    "returncode": int(result.exit_code),
+                    "stdout": output if result.exit_code == 0 else "",
+                    "stderr": "" if result.exit_code == 0 else output,
+                }
+
             cmd_str = " ".join(command) if isinstance(command, list) else command
             out = env.docker_provider.execute(
                 cmd_str,
@@ -835,7 +876,8 @@ class TaskManager:
             or ""
         ).strip()
         if not proxy_url:
-            raise ValueError("proxy setup requires proxy_url or HTTP_PROXY environment variable")
+            logger.warning("proxy requested but no proxy_url/HTTP_PROXY configured; skipping")
+            return
 
         os.environ["http_proxy"] = proxy_url
         os.environ["https_proxy"] = proxy_url
