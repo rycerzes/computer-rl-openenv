@@ -146,7 +146,6 @@ from .table import compare_conference_city_in_order, compare_csv, compare_table
 from .text_present import evaluate_text_present
 from .thunderbird import check_thunderbird_filter, check_thunderbird_folder, check_thunderbird_prefs
 from .url_match import evaluate_url_match
-from .utils import exact_match, fuzzy_match
 from .vlc import (
     check_global_key_play_pause,
     check_one_instance_when_started_from_file,
@@ -313,8 +312,8 @@ METRIC_REGISTRY = {
     # URL Match
     "evaluate_url_match": evaluate_url_match,
     # Utils
-    "exact_match": exact_match,
-    "fuzzy_match": fuzzy_match,
+    "exact_match": general_exact_match,
+    "fuzzy_match": general_fuzzy_match,
     # VLC
     "is_vlc_playing": is_vlc_playing,
     "is_vlc_recordings_folder": is_vlc_recordings_folder,
